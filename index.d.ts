@@ -9,5 +9,5 @@ export interface HavenOptions {
 export interface HavenDomain extends Domain {
     havenUuid: string;
 }
-export declare const haven: (opts: HavenOptions) => RequestHandler;
+export declare const haven: (opts?: Partial<HavenOptions>) => RequestHandler;
 export default haven;

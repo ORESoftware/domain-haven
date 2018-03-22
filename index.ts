@@ -67,7 +67,7 @@ const handleGlobalErrors = function (responseHash: HavenResponseHash, opts?: Hav
   });
 };
 
-export const haven = function (opts: HavenOptions) {
+export const haven = function (opts?: Partial<HavenOptions>) {
   
   const responseHash = {} as HavenResponseHash;
   
