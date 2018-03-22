@@ -77,20 +77,20 @@ export const haven = function (opts?: Partial<HavenOptions>) {
   
   return <RequestHandler> function (req, res, next) {
     
-    let d = domain.create() as HavenDomain; // create a new domain for this request
+    const d = domain.create() as HavenDomain; // create a new domain for this request
     const v = d.havenUuid = uuid.v4();
     responseHash[v] = res;
     
     res.once('finish', function () {
+      delete responseHash[d.havenUuid];
       d.exit();
       d.removeAllListeners();
-      delete responseHash[d.havenUuid];
     });
     
     d.once('error', function (e) {
       if (!res.headersSent) {
         res.status(500).json({
-          error: util.inspect(e ? e.stack || e : e)
+          error: e && e.stack || util.inspect(e || 'no error trace available')
         });
       }
     });

@@ -26,10 +26,10 @@ export {app};
 
 # How it works:
 
-### At the basis, what we do is use this beautiful piece of middleware:
+What we do is use something similar to this beautiful piece of middleware:
 
 ```js 
-const middleware = function (req, res, next) {
+const havenMiddleware = function (req, res, next) {
     
     const d = domain.create(); // create a new domain for this request
     
@@ -44,7 +44,6 @@ const middleware = function (req, res, next) {
         });
       }
     });
-    
     
     d.run(next);  // we invoke the next middleware
     

@@ -3,7 +3,7 @@
     "declaration": true,
     "baseUrl": ".",
     "allowJs": false,
-    "target": "es5",
+    "target": "es6",
     "module": "commonjs",
     "noImplicitAny": true,
     "removeComments": true,
@@ -17,8 +17,6 @@
   "allowJs": true,
   "compileOnSave": false,
   "exclude": [
-    "public",
-    "test",
     "node_modules"
   ]
 }
