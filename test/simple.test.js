@@ -49,15 +49,7 @@ const tasks = Array.apply(null, Array(5000)).map(function () {
         });
     };
 });
-console.log(tasks.length);
-tasks.forEach(function (v, i) {
-    if (!v)
-        throw i;
-    if (typeof v !== 'function')
-        throw 'no function' + i;
-    console.log(v);
-});
-async.parallelLimit(tasks, 55, function (err) {
+async.parallelLimit(tasks, 15, function (err) {
     if (err)
         throw err;
     console.log('passed.');

@@ -23,6 +23,19 @@ export {app};
 
 ```
 
+### If you just want to capture errors that don't make it to the global scope, use:
+
+```js
+app.use(haven({handleGlobalErrors: false}));
+```
+
+### To just show error messages, but not the full stack trace, use:
+
+```js
+app.use(haven({showStackTracesInResponse: false}));
+```
+
+
 
 # How it works:
 
