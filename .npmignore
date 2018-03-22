@@ -1,0 +1,10 @@
+.idea
+node_modules
+.npmignore
+.gitignore
+.vscode
+*.log
+*.md
+*.json
+*.ts
+!index.d.ts
