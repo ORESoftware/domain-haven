@@ -1,5 +1,7 @@
 'use strict';
 
+import {HavenData} from "./simple-server";
+
 declare global {
   namespace Express {
     interface Request {
@@ -8,12 +10,6 @@ declare global {
   }
 }
 
-export interface HavenData {
-  timeoutAmount: number;
-  throwSync?: boolean;
-  timeoutThrow: boolean;
-  promiseThrow: boolean;
-}
 
 import {ErrorRequestHandler} from "express";
 import * as express from 'express';

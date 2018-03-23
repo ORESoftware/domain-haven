@@ -1,9 +1,9 @@
 import http = require('http');
 import async = require('async');
 import request = require('request');
-import {HavenData} from "./simple-server";
 import assert = require('assert');
 import util = require('util');
+import {HavenData} from "./domain-haven";
 
 const tasks = Array.apply(null, Array(5000)).map(function () {
   return function (cb: Function) {
