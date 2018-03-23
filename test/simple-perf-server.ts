@@ -1,6 +1,6 @@
 'use strict';
 
-import {HavenData} from "./simple-server";
+import {HavenData} from "./domain-haven";
 
 declare global {
   namespace Express {
@@ -9,7 +9,6 @@ declare global {
     }
   }
 }
-
 
 import {ErrorRequestHandler} from "express";
 import * as express from 'express';
@@ -27,8 +26,7 @@ if (process.env.use_haven === 'yes') {
   app.use(haven());
 }
 
-
-app.use(function(req,res,next){
+app.use(function (req, res, next) {
   res.json({success: true});
 });
 
