@@ -13,6 +13,7 @@ export interface HavenData {
   throwSync?: boolean;
   timeoutThrow: boolean;
   promiseThrow: boolean;
+  asyncPromiseThrow: boolean;
 }
 
 import {ErrorRequestHandler} from "express";
@@ -20,6 +21,15 @@ import * as express from 'express';
 import haven from 'domain-haven';
 
 const app = express();
+
+process.once('uncaughtException', function (e) {
+  console.error('we have uncaughtException', e);
+});
+
+process.once('unhandledRejection', function (e: any) {
+  console.error('we have unhandledRejection: ', e);
+  
+});
 
 app.use(function (req, res, next) {
   req.havenData = JSON.parse(req.query.haven);
@@ -39,7 +49,7 @@ const delay = function (amount: number) {
 
 app.use(function (req, res, next) {
   
-  console.log('havenData:', req.havenData);
+  // console.log('havenData:', req.havenData);
   
   if (req.havenData.throwSync) {
     throw new Error('sync throw A');
@@ -59,10 +69,17 @@ app.use(function (req, res, next) {
     });
   }
   
+  if (req.havenData.asyncPromiseThrow) {
+    return delay(to).then(function () {
+      setTimeout(function () {
+        throw new Error('promise throw D');
+      }, 100);
+    });
+  }
+  
 });
 
 app.use(<ErrorRequestHandler>function (err, req, res, next) {
-  err && console.error(err.message || err);
   if (!res.headersSent) {
     setTimeout(function () {
       if (!res.headersSent) {

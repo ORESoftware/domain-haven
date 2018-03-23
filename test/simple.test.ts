@@ -22,13 +22,17 @@ const tasks = Array.apply(null, Array(5000)).map(function () {
       qs: {haven: null as any}
     };
     
-    if (r < 0.33) {
+    if (r < 0.25) {
       qs.timeoutThrow = true;
       m = 'timeout throw B';
     }
-    else if (r < 0.66) {
+    else if (r < 0.50) {
       qs.throwSync = true;
       m = 'sync throw A';
+    }
+    else if(r < .75){
+      qs.asyncPromiseThrow = true;
+      m = 'promise throw D';
     }
     else {
       qs.promiseThrow = true;

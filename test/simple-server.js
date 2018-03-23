@@ -3,6 +3,12 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express = require("express");
 const domain_haven_1 = require("domain-haven");
 const app = express();
+process.once('uncaughtException', function (e) {
+    console.error('we have uncaughtException', e);
+});
+process.once('unhandledRejection', function (e) {
+    console.error('we have unhandledRejection: ', e);
+});
 app.use(function (req, res, next) {
     req.havenData = JSON.parse(req.query.haven);
     if (!Number.isInteger(req.havenData.timeoutAmount)) {
@@ -17,7 +23,6 @@ const delay = function (amount) {
     });
 };
 app.use(function (req, res, next) {
-    console.log('havenData:', req.havenData);
     if (req.havenData.throwSync) {
         throw new Error('sync throw A');
     }
@@ -32,9 +37,15 @@ app.use(function (req, res, next) {
             throw new Error('promise throw C');
         });
     }
+    if (req.havenData.asyncPromiseThrow) {
+        return delay(to).then(function () {
+            setTimeout(function () {
+                throw new Error('promise throw D');
+            }, 100);
+        });
+    }
 });
 app.use(function (err, req, res, next) {
-    err && console.error(err.message || err);
     if (!res.headersSent) {
         setTimeout(function () {
             if (!res.headersSent) {
