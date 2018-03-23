@@ -45,8 +45,8 @@ const handleGlobalErrors = function (responseHash: HavenResponseHash, opts?: Hav
       let res = responseHash[d.havenUuid];
       if (res && !res.headersSent) {
         res.status(500).json({
+          trappedByDomainHavenMiddleware: true,
           uncaughtException: true,
-          wasTrappedByDomainHavenMiddleware: true,
           error: getErrorTrace(e)
         });
       }
@@ -58,8 +58,8 @@ const handleGlobalErrors = function (responseHash: HavenResponseHash, opts?: Hav
       let res = responseHash[p.domain.havenUuid];
       if (res && !res.headersSent) {
         res.status(500).json({
+          trappedByDomainHavenMiddleware: true,
           unhandledRejection: true,
-          wasTrappedByDomainHavenMiddleware: true,
           error: getErrorTrace(e)
         });
       }
@@ -69,7 +69,7 @@ const handleGlobalErrors = function (responseHash: HavenResponseHash, opts?: Hav
 
 export const haven = function (opts?: Partial<HavenOptions>) {
   
-  const responseHash = {} as HavenResponseHash;
+  const responseHash : HavenResponseHash = {} ;
   
   if (!(opts && opts.handleGlobalErrors === false)) {
     handleGlobalErrors(responseHash);

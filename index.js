@@ -16,8 +16,8 @@ const handleGlobalErrors = function (responseHash, opts) {
             let res = responseHash[d.havenUuid];
             if (res && !res.headersSent) {
                 res.status(500).json({
+                    trappedByDomainHavenMiddleware: true,
                     uncaughtException: true,
-                    wasTrappedByDomainHavenMiddleware: true,
                     error: getErrorTrace(e)
                 });
             }
@@ -28,8 +28,8 @@ const handleGlobalErrors = function (responseHash, opts) {
             let res = responseHash[p.domain.havenUuid];
             if (res && !res.headersSent) {
                 res.status(500).json({
+                    trappedByDomainHavenMiddleware: true,
                     unhandledRejection: true,
-                    wasTrappedByDomainHavenMiddleware: true,
                     error: getErrorTrace(e)
                 });
             }
