@@ -3,11 +3,12 @@ import async = require('async');
 import request = require('request');
 import assert = require('assert');
 import util = require('util');
-import {HavenData} from "./domain-haven";
+import {HavenData} from "../domain-haven";
 
-const tasks = Array.apply(null, Array(5000)).map(function () {
+const tasks = Array.apply(null, Array(19000)).map(function (n: any, x: number) {
   return function (cb: Function) {
     
+    console.log('starting number', x);
     const r = Math.random();
     let m: string;
     
@@ -22,17 +23,25 @@ const tasks = Array.apply(null, Array(5000)).map(function () {
       qs: {haven: null as any}
     };
     
-    if (r < 0.25) {
+    if (r < 0.10) {
       qs.timeoutThrow = true;
       m = 'timeout throw B';
     }
-    else if (r < 0.50) {
+    else if (r < 0.20) {
       qs.throwSync = true;
       m = 'sync throw A';
     }
-    else if(r < .75){
+    else if (r < 0.40) {
       qs.asyncPromiseThrow = true;
       m = 'promise throw D';
+    }
+    else if (r < 0.60) {
+      qs.asyncAwaitTimeoutThrow = true;
+      m = 'async await throw F';
+    }
+    else if (r < 0.90) {
+      qs.asyncAwaitThrow = true;
+      m = 'async await throw E';
     }
     else {
       qs.promiseThrow = true;
@@ -41,7 +50,7 @@ const tasks = Array.apply(null, Array(5000)).map(function () {
     
     const to = setTimeout(function () {
       cb(new Error('request with the following options timedout: ' + util.inspect(opts)));
-    }, 800);
+    }, 3800);
     
     opts.qs.haven = JSON.stringify(qs);
     
@@ -65,40 +74,13 @@ const tasks = Array.apply(null, Array(5000)).map(function () {
         return cb(err);
       }
       
+      console.log('done with number', x);
       cb(null);
-    })
+    });
     
-    // http.get(opts, function (resp) {
-    //
-    //   let data = '';
-    //
-    //   resp.on('data', function (d) {
-    //     data += String(d);
-    //   });
-    //
-    //   resp.once('end', function () {
-    //
-    //     clearTimeout(to);
-    //
-    //     try {
-    //       const v = JSON.parse(data);
-    //       assert(String(v.error).match(m), util.inspect(data) + ' does not match: ' + m);
-    //     }
-    //     catch (err) {
-    //       console.error('could not parse:', data);
-    //       return cb(err);
-    //     }
-    //
-    //     cb(null);
-    //
-    //   });
-    //
-    // });
     
   }
 });
-
-
 
 async.parallelLimit(tasks, 15, function (err) {
   if (err) throw err;

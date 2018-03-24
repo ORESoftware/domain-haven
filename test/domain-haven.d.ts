@@ -4,4 +4,6 @@ export interface HavenData {
   timeoutThrow: boolean;
   promiseThrow: boolean;
   asyncPromiseThrow: boolean;
+  asyncAwaitThrow: boolean;
+  asyncAwaitTimeoutThrow: boolean;
 }

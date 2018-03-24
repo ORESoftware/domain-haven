@@ -2,14 +2,8 @@
 
 # Domain-Haven
 
-This is an awesome module for using Node.js domains to capture runtime errors and pin otherwise unpinnable errors to a particular request.
-
-
-# Performance
-
-
-
-# Usage
+This is an awesome module for using Node.js domains to capture runtime errors and <br>
+pin errors / exceptions / unhandled-rejections to a particular request/response.
 
 ```js
 
@@ -22,6 +16,108 @@ app.use(haven());
 export {app};
 
 ```
+
+# Behavior
+
+By default, if an `uncaughtException` or `unhandledRejection` occurs and a request/response pair can be 
+<br>
+pinned those events, a JSON error response will be sent.  If the event cannot be pinned to
+<br>
+to a particular request/response, Haven will shutdown the process.
+
+_______________________________________________
+
+On the other hand, if the user wants control of what response to send to the user, use:
+
+```js
+app.use(haven({auto:false}));
+```
+
+and then use these event handlers:
+
+```js
+
+haven.emitter.on('blunder', function (v: HavenBlunder) {  
+ 
+ 
+ 
+  if(v.pinned){
+     const res = v.response;
+     res.json({error: v.error});
+   }
+   else{
+      // the error could not be pinned to a request/response pair
+      // you can decide to shutdown or do whatever you want
+   }
+   
+});
+```
+
+If you wish to have separate handlers for uncaughtException, unhandledRejection, and a pure domain-trapped error, use:
+
+```js
+haven.emitter.on('exception', function (v: HavenException) {
+    // there was an uncaughtException
+});
+
+haven.emitter.on('rejection', function (v: HavenRejection) {
+    // there was an unhandledRejection
+});
+
+haven.emitter.on('trapped', function (v: HavenTrappedError) {
+    // the runtime error was trapped by the domain error handler =>  d.once('error', function(e){});
+});
+
+```
+
+where HavenException, HavenRejection and HavenTrappedError are as follows:
+
+```typescript
+
+
+export interface HavenTrappedError {
+  message: string,
+  domain?: Domain | null,
+  error: Error,
+  request: Request | null
+  response: Response | null,
+  pinned: true | false,
+}
+
+export interface HavenException {
+  message: string,
+  domain: Domain | null,
+  uncaughtException: true,
+  error: Error,
+  request: Request | null
+  response: Response | null,
+  pinned: true | false,
+}
+
+export interface HavenRejection {
+  message: string,
+  domain: Domain| null,
+  unhandledRejection: true,
+  error: Error,
+  request: Request | null
+  response: Response | null,
+  pinned: true | false,
+  promise: Promise<any> | null
+}
+
+export type HavenBlunder = HavenException | HavenTrappedError | HavenRejection;
+
+```
+
+
+
+# Performance
+
+
+
+# Usage
+
+
 
 ### If you just want to capture errors that don't make it to the global scope, use:
 

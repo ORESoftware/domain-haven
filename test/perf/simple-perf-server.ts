@@ -1,6 +1,6 @@
 'use strict';
 
-import {HavenData} from "./domain-haven";
+import {HavenData} from "../domain-haven";
 
 declare global {
   namespace Express {

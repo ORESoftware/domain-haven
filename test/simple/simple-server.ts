@@ -1,6 +1,6 @@
 'use strict';
 
-import {HavenData} from "./domain-haven";
+import {HavenData} from "../domain-haven";
 
 declare global {
   namespace Express {
@@ -13,6 +13,7 @@ declare global {
 import {ErrorRequestHandler} from "express";
 import * as express from 'express';
 import haven from 'domain-haven';
+import {HavenBlunder, HavenTrappedError, HavenException, HavenRejection} from "../../index";
 
 const app = express();
 
@@ -33,7 +34,44 @@ app.use(function (req, res, next) {
   next();
 });
 
-app.use(haven());
+// haven.emitter.on('error', function (v: HavenError) {
+//   if (v.pinned) {
+//     const res = v.response;
+//     res.json({error: v.error.stack});
+//   }
+//   else {
+//     console.error('error,had to exit.');
+//     process.exit(1);
+//   }
+//
+// });
+//
+//
+// haven.emitter.on('rejection', function (v: HavenRejection) {
+//   if (v.pinned) {
+//     const res = v.response;
+//     res.json({error: v.error.stack});
+//   }
+//   else {
+//     console.error('rejection,had to exit.');
+//     process.exit(1);
+//   }
+//
+// });
+
+haven.emitter.on('blunder', function (v: HavenBlunder) {
+  if (v.pinned) {
+    const res = v.response;
+    res.json({error: v.error.stack});
+  }
+  else {
+    console.error('exception,had to exit.');
+    process.exit(1);
+  }
+  
+});
+
+app.use(haven({auto: false}));
 
 const delay = function (amount: number) {
   return new Promise(res => {
@@ -70,6 +108,25 @@ app.use(function (req, res, next) {
       }, 100);
     });
   }
+  
+  next();
+  
+});
+
+app.use(async function (req, res, next) {
+  
+  if (req.havenData.asyncAwaitThrow) {
+    throw new Error('async await throw E');
+  }
+  
+  if (req.havenData.asyncAwaitTimeoutThrow) {
+    return setTimeout(function () {
+      throw new Error('async await throw F');
+    }, req.havenData.timeoutAmount);
+    
+  }
+  
+  next();
   
 });
 
