@@ -76,7 +76,7 @@ where HavenException, HavenRejection and HavenTrappedError are as follows:
 
 export interface HavenTrappedError {
   message: string,
-  domain?: Domain | null,
+  domain: Domain | null,
   error: Error,
   request: Request | null
   response: Response | null,
