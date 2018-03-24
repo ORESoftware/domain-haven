@@ -110,7 +110,7 @@ const handleGlobalErrors = function (responseHash: HavenResponseHash, opts?: Par
           error: getErrorObject(e),
           pinned: true,
           uncaughtException: true,
-          request: res.req,
+          request: (res as any).req,
           response: res,
           domain: d
         });
@@ -157,7 +157,7 @@ const handleGlobalErrors = function (responseHash: HavenResponseHash, opts?: Par
           error: getErrorObject(e),
           unhandledRejection: true,
           pinned: true,
-          request: res.req,
+          request: (res as any).req,
           response: res,
           promise: p,
           domain: p.domain
