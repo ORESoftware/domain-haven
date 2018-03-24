@@ -21,29 +21,28 @@ export {app};
 
 By default, if an `uncaughtException` or `unhandledRejection` occurs and a request/response pair can be 
 <br>
-pinned those events, a JSON error response will be sent.  If the event cannot be pinned to
+pinned to the event, a JSON error response will be sent.  If the event cannot be pinned to
 <br>
 to a particular request/response, Haven will shutdown the process.
 
 _______________________________________________
 
-On the other hand, if the user wants control of what response to send to the user, use:
+On the other hand, if the developer wants full control of what response to send, etc, use:
 
 ```js
 app.use(haven({auto:false}));
 ```
 
-and then use these event handlers:
+and then use this event handler:
 
 ```js
 
 haven.emitter.on('blunder', function (v: HavenBlunder) {  
- 
- 
- 
+  
   if(v.pinned){
-     const res = v.response;
-     res.json({error: v.error});
+     const req = v.request, res = v.response;
+     // you now know what request/response caused the error, do what you want with that info
+     res.json({error: v.error.message});
    }
    else{
       // the error could not be pinned to a request/response pair
