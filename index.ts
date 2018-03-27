@@ -178,7 +178,7 @@ const handleGlobalErrors = function (responseHash: HavenResponseHash, opts?: Par
     });
     
     if (auto) {
-      log.error('Unhandled rejection could not be pinned to a request/response.');
+      log.error('Unhandled rejection could NOT be pinned to a request/response.');
       process.exit(1);
     }
   });
@@ -224,7 +224,7 @@ export const haven: Haven = function (opts?) {
       }
       else {
         emitter.emit('trapped', <HavenTrappedError>{
-          message: 'Uncaught exception could NOT be pinned to a request/response pair.',
+          message: 'Uncaught exception was pinned to a request/response pair.',
           error: getErrorObject(e),
           pinned: true,
           uncaughtException: true,
