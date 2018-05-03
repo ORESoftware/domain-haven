@@ -70,10 +70,16 @@ const log = {
 };
 
 const getErrorObject = function (e: any) {
-  if (!(e instanceof Error)) {
+  
+  if (e && typeof e.stack === 'string' && typeof e.message === 'string') {
+    return e;
+  }
+  
+  if (e && !(e instanceof Error)) {
     return new Error(typeof e === 'string' ? e : util.inspect(e));
   }
-  return e;
+  
+  return e || new Error('Unknown/falsy error, this is a dummy error.');
 };
 
 const handleGlobalErrors = function (responseHash: HavenResponseHash, opts?: Partial<HavenOptions>) {
@@ -189,7 +195,14 @@ export interface Haven {
   emitter?: EventEmitter;
 }
 
+let registerCount = 0;
+
 export const haven: Haven = function (opts?) {
+  
+  registerCount++;
+  if (registerCount > 1) {
+    throw new Error('Haven middleware was registered more than once. Haven middleware should only be use in one place.')
+  }
   
   const responseHash: HavenResponseHash = {};
   const auto = !(opts && opts.auto === false);

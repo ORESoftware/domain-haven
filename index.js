@@ -9,10 +9,13 @@ const log = {
     error: console.log.bind(console, '[haven stderr]'),
 };
 const getErrorObject = function (e) {
-    if (!(e instanceof Error)) {
+    if (e && typeof e.stack === 'string' && typeof e.message === 'string') {
+        return e;
+    }
+    if (e && !(e instanceof Error)) {
         return new Error(typeof e === 'string' ? e : util.inspect(e));
     }
-    return e;
+    return e || new Error('Unknown/falsy error, this is a dummy error.');
 };
 const handleGlobalErrors = function (responseHash, opts) {
     const auto = !(opts && opts.auto === false);
@@ -100,7 +103,12 @@ const handleGlobalErrors = function (responseHash, opts) {
         }
     });
 };
+let registerCount = 0;
 exports.haven = function (opts) {
+    registerCount++;
+    if (registerCount > 1) {
+        throw new Error('Haven middleware was registered more than once. Haven middleware should only be use in one place.');
+    }
     const responseHash = {};
     const auto = !(opts && opts.auto === false);
     if (!(opts && opts.handleGlobalErrors === false)) {
