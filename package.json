@@ -1,6 +1,6 @@
 {
   "name": "domain-haven",
-  "version": "0.0.105",
+  "version": "0.0.106",
   "description": "Middleware for creating domains for handling request errors.",
   "main": "index.js",
   "scripts": {
@@ -23,10 +23,10 @@
   },
   "homepage": "https://github.com/ORESoftware/domain-haven#readme",
   "dependencies": {
-    "async": "^2.6.0",
     "uuid": "^3.2.1"
   },
   "devDependencies": {
+    "async": "^2.6.0",
     "@types/async": "^2.0.48",
     "@types/core-js": "^0.9.46",
     "@types/express": "^4.11.1",
