@@ -59,12 +59,10 @@ const handleGlobalErrors = function (responseHash, opts) {
             domain: d || null
         });
         if (auto) {
-            log.error('Uncaught exception could NOT be pinned to a request/response.');
-            process.exit(1);
+            log.error('Uncaught exception could NOT be pinned to a request/response:', util.inspect(e));
         }
     });
     process.on('unhandledRejection', function (e, p) {
-        const emitter = exports.haven.emitter;
         if (p && p.domain && p.domain.havenUuid) {
             let res = responseHash[p.domain.havenUuid];
             if (res && !res.headersSent) {
@@ -75,7 +73,7 @@ const handleGlobalErrors = function (responseHash, opts) {
                         error: getErrorTrace(e)
                     });
                 }
-                return emitter.emit('rejection', {
+                return exports.haven.emitter.emit('rejection', {
                     message: 'Unhandled rejection was pinned to a request/response.',
                     error: getErrorObject(e),
                     unhandledRejection: true,
@@ -87,7 +85,7 @@ const handleGlobalErrors = function (responseHash, opts) {
                 });
             }
         }
-        emitter.emit('rejection', {
+        exports.haven.emitter.emit('rejection', {
             message: 'Unhandled rejection could NOT be pinned to a request/response.',
             error: getErrorObject(e),
             pinned: false,
@@ -98,8 +96,7 @@ const handleGlobalErrors = function (responseHash, opts) {
             domain: p && p.domain || null
         });
         if (auto) {
-            log.error('Unhandled rejection could NOT be pinned to a request/response.');
-            process.exit(1);
+            log.error('Unhandled rejection could NOT be pinned to a request/response:', util.inspect(e));
         }
     });
 };
@@ -114,6 +111,12 @@ exports.haven = function (opts) {
     if (!(opts && opts.handleGlobalErrors === false)) {
         handleGlobalErrors(responseHash, opts);
     }
+    const getErrorTrace = function (e) {
+        if (opts && opts.showStackTracesInResponse === false) {
+            return e && e.message || util.inspect(e || 'no error trace available');
+        }
+        return e && e.stack || util.inspect(e || 'no error trace available');
+    };
     return function (req, res, next) {
         const d = domain.create();
         const v = d.havenUuid = uuid.v4();
@@ -123,18 +126,17 @@ exports.haven = function (opts) {
             d.exit();
             d.removeAllListeners();
         });
-        const emitter = exports.haven.emitter;
         d.once('error', function (e) {
             if (auto) {
                 if (!res.headersSent) {
                     res.status(500).json({
                         trappedByDomainHavenMiddleware: true,
-                        error: e && e.stack || util.inspect(e || 'no error trace available')
+                        error: getErrorTrace(e)
                     });
                 }
             }
             else {
-                emitter.emit('trapped', {
+                exports.haven.emitter.emit('trapped', {
                     message: 'Uncaught exception was pinned to a request/response pair.',
                     error: getErrorObject(e),
                     pinned: true,
