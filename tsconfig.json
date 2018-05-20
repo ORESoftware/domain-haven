@@ -1,5 +1,7 @@
 {
   "compilerOptions": {
+    "outDir": "dist",
+    "skipLibCheck": true,
     "declaration": true,
     "baseUrl": ".",
     "allowJs": false,
@@ -16,7 +18,7 @@
   },
   "allowJs": true,
   "compileOnSave": false,
-  "exclude": [
-    "node_modules"
+  "include": [
+    "src"
   ]
 }

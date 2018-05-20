@@ -1,4 +1,14 @@
+
+### matching
 *.log
+*.tgz
+
+### folders
 node_modules
 .idea
-.DS_Store
+.vscode
+dist/*
+
+### negation
+!dist/README.md
+

@@ -1,12 +1,21 @@
+
+### folders
 .idea
 node_modules
-.npmignore
-.gitignore
 .vscode
+scripts
+test
+src
+
+### matching
 *.log
 *.md
 *.json
-*.ts
-scripts
-test
-!index.d.ts
+
+### files
+.npmignore
+.gitignore
+
+
+
+
