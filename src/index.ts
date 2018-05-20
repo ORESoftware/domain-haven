@@ -269,3 +269,7 @@ haven.emitter.on('exception', onAny);
 haven.emitter.on('trapped', onAny);
 
 export default haven;
+
+export const r2gSmokeTest = function () {
+  return true;
+};
