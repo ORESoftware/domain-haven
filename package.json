@@ -1,8 +1,10 @@
 {
   "name": "domain-haven",
-  "version": "0.0.107",
+  "version": "0.0.108",
   "description": "Middleware for creating domains for handling request errors.",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "typings": "dist/index.d.ts",
   "scripts": {
     "test": "suman test"
   },
