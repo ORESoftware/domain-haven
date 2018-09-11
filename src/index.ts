@@ -65,8 +65,8 @@ export interface HavenRejection {
 export type HavenBlunder = HavenException | HavenTrappedError | HavenRejection;
 
 const log = {
-  info: console.log.bind(console, '[haven stdout]'),
-  error: console.log.bind(console, '[haven stderr]'),
+  info: console.log.bind(console, 'haven stdout:'),
+  error: console.error.bind(console, 'haven stderr:'),
 };
 
 const getErrorObject = function (e: any) {
@@ -82,7 +82,7 @@ const getErrorObject = function (e: any) {
   return e || new Error('Unknown/falsy error, this is a dummy error.');
 };
 
-const handleGlobalErrors = function (responseHash: HavenResponseHash, opts?: Partial<HavenOptions>) {
+const handleGlobalErrors = (responseHash: HavenResponseHash, opts?: Partial<HavenOptions>) => {
   
   const auto = !(opts && opts.auto === false);
   
@@ -93,7 +93,7 @@ const handleGlobalErrors = function (responseHash: HavenResponseHash, opts?: Par
     return e && e.stack || util.inspect(e);
   };
   
-  process.on('uncaughtException', function (e) {
+  process.on('uncaughtException', e => {
     
     const d = process.domain as HavenDomain;
     const emitter = haven.emitter;
@@ -140,7 +140,7 @@ const handleGlobalErrors = function (responseHash: HavenResponseHash, opts?: Par
     
   });
   
-  process.on('unhandledRejection', function (e, p: HavenPromise) {
+  process.on('unhandledRejection', (e, p: HavenPromise) => {
     
     if (p && p.domain && p.domain.havenUuid) {
       
@@ -190,15 +190,15 @@ const handleGlobalErrors = function (responseHash: HavenResponseHash, opts?: Par
 
 export interface Haven {
   (opts?: Partial<HavenOptions>): RequestHandler;
+  
   emitter?: EventEmitter;
 }
 
 let registerCount = 0;
 
-export const haven: Haven = function (opts?) {
+export const haven: Haven = (opts?) => {
   
-  registerCount++;
-  if (registerCount > 1) {
+  if (++registerCount > 1) {
     throw new Error('Haven middleware was registered more than once. Haven middleware should only be use in one place.')
   }
   
@@ -209,14 +209,14 @@ export const haven: Haven = function (opts?) {
     handleGlobalErrors(responseHash, opts);
   }
   
-  const getErrorTrace = function (e: any) {
+  const getErrorTrace = (e: any) => {
     if (opts && opts.showStackTracesInResponse === false) {
       return e && e.message || util.inspect(e || 'no error trace available');
     }
     return e && e.stack || util.inspect(e || 'no error trace available');
   };
   
-  return function (req, res, next) {
+  return (req, res, next) => {
     
     const d = domain.create() as HavenDomain; // create a new domain for this request
     const v = d.havenUuid = uuid.v4();
@@ -237,18 +237,19 @@ export const haven: Haven = function (opts?) {
             error: getErrorTrace(e)
           });
         }
+        return;
       }
-      else {
-        haven.emitter.emit('trapped', <HavenTrappedError>{
-          message: 'Uncaught exception was pinned to a request/response pair.',
-          error: getErrorObject(e),
-          pinned: true,
-          uncaughtException: true,
-          request: req,
-          response: res,
-          domain: d || null
-        });
-      }
+      
+      haven.emitter.emit('trapped', <HavenTrappedError>{
+        message: 'Uncaught exception was pinned to a request/response pair.',
+        error: getErrorObject(e),
+        pinned: true,
+        uncaughtException: true,
+        request: req,
+        response: res,
+        domain: d || null
+      });
+      
     });
     
     // we invoke the next middleware
@@ -260,7 +261,7 @@ export const haven: Haven = function (opts?) {
 
 haven.emitter = new EventEmitter();
 
-const onAny = function (v: HavenBlunder) {
+const onAny = (v: HavenBlunder) => {
   haven.emitter.emit('blunder', v);
 };
 
