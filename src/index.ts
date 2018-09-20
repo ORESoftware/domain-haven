@@ -24,9 +24,6 @@ export interface HavenDomain extends Domain {
   havenUuid: string
 }
 
-interface HavenResponseHash {
-  [key: string]: Response
-}
 
 interface HavenPromise extends Promise<any> {
   domain?: HavenDomain,
@@ -82,7 +79,7 @@ const getErrorObject = function (e: any) {
   return e || new Error('Unknown/falsy error, this is a dummy error.');
 };
 
-const handleGlobalErrors = (responseHash: HavenResponseHash, opts?: Partial<HavenOptions>) => {
+const handleGlobalErrors = (resMap:  Map<string, Response>, opts?: Partial<HavenOptions>) => {
   
   const auto = !(opts && opts.auto === false);
   
@@ -100,7 +97,7 @@ const handleGlobalErrors = (responseHash: HavenResponseHash, opts?: Partial<Have
     
     if (d && d.havenUuid) {
       
-      let res = responseHash[d.havenUuid];
+      let res = resMap.get(d.havenUuid);
       
       if (res && !res.headersSent) {
         if (auto) {
@@ -144,7 +141,7 @@ const handleGlobalErrors = (responseHash: HavenResponseHash, opts?: Partial<Have
     
     if (p && p.domain && p.domain.havenUuid) {
       
-      let res = responseHash[p.domain.havenUuid];
+      let res = resMap.get(p.domain.havenUuid);
       
       if (res && !res.headersSent) {
         
@@ -202,11 +199,11 @@ export const haven: Haven = (opts?) => {
     throw new Error('Haven middleware was registered more than once. Haven middleware should only be use in one place.')
   }
   
-  const responseHash: HavenResponseHash = {};
+  const resMap = new Map<string, Response>();
   const auto = !(opts && opts.auto === false);
   
   if (!(opts && opts.handleGlobalErrors === false)) {
-    handleGlobalErrors(responseHash, opts);
+    handleGlobalErrors(resMap, opts);
   }
   
   const getErrorTrace = (e: any) => {
@@ -220,10 +217,10 @@ export const haven: Haven = (opts?) => {
     
     const d = domain.create() as HavenDomain; // create a new domain for this request
     const v = d.havenUuid = uuid.v4();
-    responseHash[v] = res;
+    resMap.set(v,res);
     
     res.once('finish', function () {
-      delete responseHash[d.havenUuid];
+      resMap.delete(d.havenUuid);
       d.exit();
       d.removeAllListeners();
     });
