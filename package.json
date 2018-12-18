@@ -30,7 +30,6 @@
   "devDependencies": {
     "async": "^2.6.0",
     "@types/async": "^2.0.48",
-    "@types/core-js": "^0.9.46",
     "@types/express": "^4.11.1",
     "@types/node": "^8.10.0",
     "@types/request": "^2.47.0",
