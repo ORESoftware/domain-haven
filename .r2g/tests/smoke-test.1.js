@@ -30,5 +30,33 @@ process.on('unhandledRejection', (reason, p) => {
 });
 
 
-// your test goes here
-// assert.strictEqual(true, false, 'whoops');
+const serverPath = require.resolve('../fixtures/simple-server.js');
+const testPath = require.resolve('../fixtures/simple-test.js');
+
+
+const k = cp.spawn('bash');
+
+k.stdin.end(`
+   node "${serverPath}"
+`);
+
+k.stdout.pipe(process.stdout);
+k.stderr.pipe(process.stderr);
+
+k.stdout.once('data', d => {
+  
+  const c = cp.spawn('bash');
+  
+  c.stdin.end(`
+   node "${testPath}"
+`);
+  
+  c.stdout.pipe(process.stdout);
+  c.stderr.pipe(process.stderr);
+  
+  c.once('exit', code => {
+    k.kill(9);
+    process.exit(code);
+  });
+  
+});
