@@ -1,6 +1,6 @@
 {
   "name": "domain-haven",
-  "version": "0.0.109",
+  "version": "0.0.110",
   "description": "Middleware for creating domains for handling request errors.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -36,5 +36,8 @@
     "@types/uuid": "^3.4.3",
     "express": "^4.16.3",
     "request": "^2.85.0"
+  },
+  "r2g": {
+    "test": "echo 'no-op'"
   }
 }
