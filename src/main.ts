@@ -202,13 +202,8 @@ export interface Haven {
   emitter?: EventEmitter;
 }
 
-let registerCount = 0;
 
 export const haven: Haven = (opts?) => {
-  
-  if (++registerCount > 1) {
-    throw new Error('Haven middleware was registered more than once. Haven middleware should only be use in one place.')
-  }
   
   const resMap = new Map<string, Response>();
   const auto = !(opts && opts.auto === false);

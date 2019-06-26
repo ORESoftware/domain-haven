@@ -10,5 +10,5 @@ node_modules
 dist/*
 
 ### negation
-!dist/README.md
+!dist/readme.md
 
