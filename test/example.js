@@ -16,12 +16,16 @@ catch(err){
 }
 
 
-
 const Domain = require('domain');
 const d = Domain.create();
 
-d.once('error', err => {
+d.on('error', err => {
   console.error('Error was trapped by the domain:', err);
 });
 
 d.run(exec);
+
+
+setTimeout(() => {
+  console.log('done');
+}, 300);

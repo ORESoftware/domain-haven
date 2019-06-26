@@ -33,7 +33,6 @@ process.on('unhandledRejection', (reason, p) => {
 const serverPath = require.resolve('../fixtures/simple-server.js');
 const testPath = require.resolve('../fixtures/simple-test.js');
 
-
 const k = cp.spawn('bash');
 
 k.stdin.end(`
