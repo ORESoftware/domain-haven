@@ -26,7 +26,7 @@ domain_haven_1.default.emitter.on('blunder', function (v) {
         process.exit(1);
     }
 });
-app.use(domain_haven_1.default({ auto: false }));
+app.use(domain_haven_1.default({ auto: true }));
 const delay = function (amount) {
     return new Promise(res => {
         setTimeout(res, amount);
