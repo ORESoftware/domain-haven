@@ -3,7 +3,7 @@ import async = require('async');
 import request = require('request');
 import assert = require('assert');
 import util = require('util');
-import {HavenData} from "../domain-haven";
+import {HavenData} from "../../domain-haven.test";
 
 const tasks = Array.apply(null, Array(19000)).map(function (n: any, x: number) {
   return function (cb: Function) {

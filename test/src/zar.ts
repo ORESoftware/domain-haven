@@ -1,6 +1,7 @@
+'use strict';
+
 import * as express from 'express';
 import {RequestHandler} from 'express';
-
 const router = express.Router();
 
 export const register = (v: any) => {
@@ -38,7 +39,7 @@ export const makePutFoo = (v: any): RequestHandler => {
   
   return (req, res, next) => {
     
-    res.json(<ApiDoc[makePutFoo.name]>{success: 'f'});
+    res.json(<ApiDoc.makePutFoo>{success: true});
     
   };
   

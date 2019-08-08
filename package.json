@@ -2,9 +2,9 @@
   "name": "domain-haven",
   "version": "0.0.111",
   "description": "Middleware for creating domains for handling request errors.",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "typings": "dist/index.d.ts",
+  "main": "dist/main.js",
+  "types": "dist/main.d.ts",
+  "typings": "dist/main.d.ts",
   "scripts": {
     "test": "suman test"
   },
@@ -29,13 +29,13 @@
   },
   "devDependencies": {
     "async": "^2.6.0",
+    "express": "^4.16.3",
+    "request": "^2.85.0",
     "@types/async": "^2.0.48",
     "@types/express": "^4.11.1",
     "@types/node": "^8.10.0",
     "@types/request": "^2.47.0",
-    "@types/uuid": "^3.4.3",
-    "express": "^4.16.3",
-    "request": "^2.85.0"
+    "@types/uuid": "^3.4.3"
   },
   "r2g": {
     "test": "echo 'no-op'"

@@ -1,20 +1,16 @@
 "use strict";
-exports.__esModule = true;
-var async = require("async");
-var request = require("request");
-var assert = require("assert");
-var util = require("util");
-var tasks = Array.apply(null, Array(19000)).map(function (n, x) {
+Object.defineProperty(exports, "__esModule", { value: true });
+const async = require("async");
+const request = require("request");
+const assert = require("assert");
+const util = require("util");
+const tasks = Array.apply(null, Array(19000)).map(function (n, x) {
     return function (cb) {
         console.log('starting number', x);
-        var r = Math.random();
-        var m;
-        var qs = { timeoutAmount: Math.ceil(30 * Math.random()) };
-        var opts = {
-            // hostname: 'localhost',
-            // path: '/',
-            // url: 'localhost',
-            // port: 6969,
+        const r = Math.random();
+        let m;
+        const qs = { timeoutAmount: Math.ceil(30 * Math.random()) };
+        const opts = {
             json: true,
             qs: { haven: null }
         };
@@ -42,7 +38,7 @@ var tasks = Array.apply(null, Array(19000)).map(function (n, x) {
             qs.promiseThrow = true;
             m = 'promise throw C';
         }
-        var to = setTimeout(function () {
+        const to = setTimeout(function () {
             cb(new Error('request with the following options timedout: ' + util.inspect(opts)));
         }, 3800);
         opts.qs.haven = JSON.stringify(qs);

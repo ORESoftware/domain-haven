@@ -1,6 +1,6 @@
 'use strict';
 
-import {HavenData} from "../domain-haven";
+import {HavenData} from "../../domain-haven.test";
 
 declare global {
   namespace Express {
@@ -12,8 +12,8 @@ declare global {
 
 import {ErrorRequestHandler} from "express";
 import * as express from 'express';
-import haven from '../../dist';
-import {HavenBlunder, HavenTrappedError, HavenException, HavenRejection} from "../../dist";
+import haven from 'domain-haven';
+import {HavenBlunder, HavenTrappedError, HavenException, HavenRejection} from "domain-haven";
 
 const app = express();
 
