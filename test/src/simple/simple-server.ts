@@ -71,7 +71,7 @@ haven.emitter.on('blunder', function (v: HavenBlunder) {
   
 });
 
-app.use(haven({auto: true}));
+app.use(haven({auto: false}));
 
 const delay = function (amount: number) {
   return new Promise(res => {
