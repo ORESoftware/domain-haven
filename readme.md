@@ -2,6 +2,12 @@
 
 # Domain-Haven
 
+### Caveat
+
+Works on Node.js version before 12. Currently not working on Node.js version 12.
+
+## About
+
 This is an awesome module for using Node.js domains to capture runtime errors and <br>
 pin errors / exceptions / unhandled-rejections to a particular request/response.
 
