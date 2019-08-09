@@ -60,11 +60,11 @@ app.use(function (req, res, next) {
 // });
 
 haven.emitter.on('blunder', function (v: HavenBlunder) {
+  // console.log('blunder:', v);
   if (v.pinned) {
     const res = v.response;
     res.json({error: v.error.stack});
-  }
-  else {
+  } else {
     console.error('exception,had to exit.');
     process.exit(1);
   }

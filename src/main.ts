@@ -145,9 +145,20 @@ const handleGlobalErrors = (resMap: Map<string, Response>, opts?: Partial<HavenO
   
   process.on('unhandledRejection', (e, p: HavenPromise) => {
     
+    let d: any = null;
+    
     if (p && p.domain && p.domain.havenUuid) {
+      d = p.domain;
+    } else if (process.domain && (<any>process.domain).havenUuid) {
+      d = process.domain;
+    }
+    
+    console.log('process.domain:', process.domain);
+    console.log('p.domain:', p.domain);
+    
+    if (d) {
       
-      let res = resMap.get(p.domain.havenUuid);
+      let res = resMap.get(d.havenUuid);
       
       if (res) {
         
@@ -164,7 +175,7 @@ const handleGlobalErrors = (resMap: Map<string, Response>, opts?: Partial<HavenO
             request: (res as any).req,
             response: res,
             promise: p,
-            domain: p.domain
+            domain: d
           });
         }
         
@@ -185,7 +196,7 @@ const handleGlobalErrors = (resMap: Map<string, Response>, opts?: Partial<HavenO
       request: null,
       response: null,
       promise: p || null,
-      domain: p && p.domain || null
+      domain: d || null
     });
     
     if (auto) {
@@ -225,13 +236,13 @@ export const haven: Haven = (opts?) => {
     const v = d.havenUuid = uuid.v4();
     resMap.set(v, res);
     
-    res.once('finish', function () {
-      resMap.delete(d.havenUuid);
+    res.once('finish', () => {
+      // resMap.delete(d.havenUuid);
       d.exit();
       d.removeAllListeners();
     });
     
-    d.once('error', function (e) {
+    d.once('error', e => {
       
       if (auto) {
         
