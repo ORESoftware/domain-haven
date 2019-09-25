@@ -237,7 +237,7 @@ export const haven: Haven = (opts?) => {
     resMap.set(v, res);
     
     res.once('finish', () => {
-      // resMap.delete(d.havenUuid);
+      resMap.delete(v);
       d.exit();
       d.removeAllListeners();
     });
