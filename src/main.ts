@@ -21,7 +21,9 @@ export interface HavenOptions {
 }
 
 export interface HavenDomain extends Domain {
-  havenUuid: string
+  havenUuid: string,
+  _havenRequest: Request,
+  _havenResponse: Response
 }
 
 interface HavenPromise extends Promise<any> {
@@ -235,6 +237,12 @@ export const haven: Haven = (opts?) => {
     const d = domain.create() as HavenDomain; // create a new domain for this request
     const v = d.havenUuid = uuid.v4();
     resMap.set(v, res);
+    
+    req._havenDomain = d;
+    res._havenDomain = d;
+    
+    d._havenRequest = req;
+    d._havenResponse = res;
     
     res.once('finish', () => {
       resMap.delete(v);

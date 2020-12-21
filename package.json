@@ -15,6 +15,10 @@
   "keywords": [
     "Domains",
     "domain",
+    "async-hook",
+    "async-hooks",
+    "asynchooks",
+    "asynchook",
     "express",
     "middleware"
   ],
