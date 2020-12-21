@@ -4,7 +4,7 @@ import {HavenData} from "../../domain-haven.test";
 
 declare global {
   namespace Express {
-    interface Request {
+    export interface Request {
       havenData: HavenData;
     }
   }
@@ -26,7 +26,7 @@ process.once('unhandledRejection', function (e: any) {
   
 });
 
-app.use(function (req, res, next) {
+app.use(function (req: any, res, next) {
   req.havenData = JSON.parse(req.query.haven);
   if (!Number.isInteger(req.havenData.timeoutAmount)) {
     throw new Error('no timeoutAmount passed')
@@ -79,7 +79,7 @@ const delay = function (amount: number) {
   });
 };
 
-app.use(function (req, res, next) {
+app.use(function (req: any, res, next) {
   
   // console.log('havenData:', req.havenData);
   
@@ -113,7 +113,7 @@ app.use(function (req, res, next) {
   
 });
 
-app.use(async function (req, res, next) {
+app.use(async function (req: any, res, next) {
   
   if (req.havenData.asyncAwaitThrow) {
     throw new Error('async await throw E');

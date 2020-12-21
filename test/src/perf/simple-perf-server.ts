@@ -16,7 +16,7 @@ import haven from 'domain-haven';
 
 const app = express();
 
-app.use(function (req, res, next) {
+app.use(function (req: any, res, next) {
   req.havenData = JSON.parse(req.query.haven || '{}');
   next();
 });
