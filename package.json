@@ -1,6 +1,6 @@
 {
   "name": "domain-haven",
-  "version": "0.0.111",
+  "version": "0.0.112",
   "description": "Middleware for creating domains for handling request errors.",
   "main": "dist/main.js",
   "types": "dist/main.d.ts",
