@@ -211,8 +211,6 @@ export interface Haven {
   emitter?: EventEmitter;
 }
 
-export const fooz = 'bar';
-
 export const haven: Haven = (opts?) => {
 
   let havenId = 1;

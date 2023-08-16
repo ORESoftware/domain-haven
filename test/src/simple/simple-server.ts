@@ -13,8 +13,6 @@ declare global {
 import {ErrorRequestHandler} from "express";
 import * as express from 'express';
 import haven from 'domain-haven';
-import * as haven2 from 'domain-haven';
-console.log(haven2.fooz);
 
 import {HavenBlunder, HavenTrappedError, HavenException, HavenRejection} from "domain-haven";
 

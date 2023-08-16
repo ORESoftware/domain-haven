@@ -2,8 +2,6 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express = require("express");
 const domain_haven_1 = require("domain-haven");
-const haven2 = require("domain-haven");
-console.log(haven2.fooz);
 const app = express();
 process.once('uncaughtException', function (e) {
     console.error('we have uncaughtException', e);
