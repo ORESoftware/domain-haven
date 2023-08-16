@@ -5,6 +5,8 @@ import assert = require('assert');
 import util = require('util');
 import {HavenData} from "../../domain-haven.test";
 
+let outCount = 0;
+
 const tasks = Array.apply(null, Array(19000)).map(function (n: any, x: number) {
   return function (cb: Function) {
     
@@ -50,11 +52,15 @@ const tasks = Array.apply(null, Array(19000)).map(function (n: any, x: number) {
     
     const to = setTimeout(function () {
       cb(new Error('request with the following options timedout: ' + util.inspect(opts)));
-    }, 3800);
-    
+    }, 18800);
+
     opts.qs.haven = JSON.stringify(qs);
+
+    outCount++;
     
     request.get('http://localhost:6969', opts, function (err, resp, v) {
+
+      outCount--;
       
       clearTimeout(to);
       
@@ -74,7 +80,7 @@ const tasks = Array.apply(null, Array(19000)).map(function (n: any, x: number) {
         return cb(err);
       }
       
-      console.log('done with number', x);
+      console.log('done with number', x, outCount);
       cb(null);
     });
     
@@ -82,7 +88,7 @@ const tasks = Array.apply(null, Array(19000)).map(function (n: any, x: number) {
   }
 });
 
-async.parallelLimit(tasks, 15, function (err) {
+async.parallelLimit(tasks, 35, function (err) {
   if (err) throw err;
   console.log('passed.');
 });

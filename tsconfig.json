@@ -6,14 +6,15 @@
     "baseUrl": ".",
     "rootDir": "src",
     "allowJs": false,
-    "target": "es2018",
+    "target": "es2020",
     "module": "commonjs",
     "noImplicitAny": true,
     "removeComments": true,
     "allowUnreachableCode": true,
     "lib": [
-      "es2017",
-      "es2018"
+      "es2019",
+      "es2020",
+      "es2021"
     ]
   },
   "allowJs": true,

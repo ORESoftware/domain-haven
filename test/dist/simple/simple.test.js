@@ -4,6 +4,7 @@ const async = require("async");
 const request = require("request");
 const assert = require("assert");
 const util = require("util");
+let outCount = 0;
 const tasks = Array.apply(null, Array(19000)).map(function (n, x) {
     return function (cb) {
         console.log('starting number', x);
@@ -40,9 +41,11 @@ const tasks = Array.apply(null, Array(19000)).map(function (n, x) {
         }
         const to = setTimeout(function () {
             cb(new Error('request with the following options timedout: ' + util.inspect(opts)));
-        }, 3800);
+        }, 18800);
         opts.qs.haven = JSON.stringify(qs);
+        outCount++;
         request.get('http://localhost:6969', opts, function (err, resp, v) {
+            outCount--;
             clearTimeout(to);
             if (err) {
                 return cb(err);
@@ -58,12 +61,12 @@ const tasks = Array.apply(null, Array(19000)).map(function (n, x) {
             catch (err) {
                 return cb(err);
             }
-            console.log('done with number', x);
+            console.log('done with number', x, outCount);
             cb(null);
         });
     };
 });
-async.parallelLimit(tasks, 15, function (err) {
+async.parallelLimit(tasks, 35, function (err) {
     if (err)
         throw err;
     console.log('passed.');

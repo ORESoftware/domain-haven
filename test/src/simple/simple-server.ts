@@ -13,6 +13,9 @@ declare global {
 import {ErrorRequestHandler} from "express";
 import * as express from 'express';
 import haven from 'domain-haven';
+import * as haven2 from 'domain-haven';
+console.log(haven2.fooz);
+
 import {HavenBlunder, HavenTrappedError, HavenException, HavenRejection} from "domain-haven";
 
 const app = express();
@@ -92,7 +95,7 @@ app.use(function (req: any, res, next) {
   if (req.havenData.timeoutThrow) {
     return setTimeout(function () {
       throw new Error('timeout throw B');
-    }, to);
+    }, 100);
   }
   
   if (req.havenData.promiseThrow) {

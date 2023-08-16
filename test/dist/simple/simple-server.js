@@ -2,6 +2,8 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const express = require("express");
 const domain_haven_1 = require("domain-haven");
+const haven2 = require("domain-haven");
+console.log(haven2.fooz);
 const app = express();
 process.once('uncaughtException', function (e) {
     console.error('we have uncaughtException', e);
@@ -26,7 +28,7 @@ domain_haven_1.default.emitter.on('blunder', function (v) {
         process.exit(1);
     }
 });
-app.use(domain_haven_1.default({ auto: false }));
+app.use((0, domain_haven_1.default)({ auto: false }));
 const delay = function (amount) {
     return new Promise(res => {
         setTimeout(res, amount);
@@ -40,7 +42,7 @@ app.use(function (req, res, next) {
     if (req.havenData.timeoutThrow) {
         return setTimeout(function () {
             throw new Error('timeout throw B');
-        }, to);
+        }, 100);
     }
     if (req.havenData.promiseThrow) {
         return delay(to).then(function () {

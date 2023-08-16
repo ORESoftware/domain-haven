@@ -7,7 +7,6 @@ import {RequestHandler, Response, Request} from 'express';
 import util = require('util');
 
 //npm
-import uuid = require('uuid');
 import * as domain from "domain";
 import {Domain} from 'domain';
 import EventEmitter = require('events');
@@ -21,7 +20,7 @@ export interface HavenOptions {
 }
 
 export interface HavenDomain extends Domain {
-  havenUuid: string,
+  havenUuid: number,
   _havenRequest: Request,
   _havenResponse: Response
 }
@@ -80,7 +79,7 @@ const getErrorObject = function (e: any) {
   return e || new Error('Unknown/falsy error, this is a dummy error.');
 };
 
-const handleGlobalErrors = (resMap: Map<string, Response>, opts?: Partial<HavenOptions>) => {
+const handleGlobalErrors = (resMap: Map<number, Response>, opts?: Partial<HavenOptions>) => {
   
   const auto = !(opts && opts.auto === false);
   
@@ -155,9 +154,6 @@ const handleGlobalErrors = (resMap: Map<string, Response>, opts?: Partial<HavenO
       d = process.domain;
     }
     
-    console.log('process.domain:', process.domain);
-    console.log('p.domain:', p.domain);
-    
     if (d) {
       
       let res = resMap.get(d.havenUuid);
@@ -215,10 +211,12 @@ export interface Haven {
   emitter?: EventEmitter;
 }
 
+export const fooz = 'bar';
 
 export const haven: Haven = (opts?) => {
-  
-  const resMap = new Map<string, Response>();
+
+  let havenId = 1;
+  const resMap = new Map<number, Response>();
   const auto = !(opts && opts.auto === false);
   
   if (!(opts && opts.handleGlobalErrors === false)) {
@@ -235,11 +233,11 @@ export const haven: Haven = (opts?) => {
   return (req, res, next) => {
     
     const d = domain.create() as HavenDomain; // create a new domain for this request
-    const v = d.havenUuid = uuid.v4();
+    const v = d.havenUuid = havenId++;
     resMap.set(v, res);
-    
-    req._havenDomain = d;
-    res._havenDomain = d;
+
+    (req as any)._havenDomain = d;
+    (res as any)._havenDomain = d;
     
     d._havenRequest = req;
     d._havenResponse = res;

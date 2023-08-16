@@ -9,7 +9,7 @@ app.use(function (req, res, next) {
 });
 if (process.env.use_haven === 'yes') {
     console.log('using haven');
-    app.use(domain_haven_1.default());
+    app.use((0, domain_haven_1.default)());
 }
 app.use(function (req, res, next) {
     res.json({ success: true });
