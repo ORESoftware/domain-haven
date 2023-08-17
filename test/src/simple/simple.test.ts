@@ -7,7 +7,7 @@ import {HavenData} from "../../domain-haven.test";
 
 let outCount = 0;
 
-const tasks = Array.apply(null, Array(19000)).map(function (n: any, x: number) {
+const tasks = Array.apply(null, Array(59000)).map(function (n: any, x: number) {
   return function (cb: Function) {
     
     console.log('starting number', x);
@@ -24,7 +24,7 @@ const tasks = Array.apply(null, Array(19000)).map(function (n: any, x: number) {
       json: true,
       qs: {haven: null as any}
     };
-    
+
     if (r < 0.10) {
       qs.timeoutThrow = true;
       m = 'timeout throw B';
@@ -58,7 +58,7 @@ const tasks = Array.apply(null, Array(19000)).map(function (n: any, x: number) {
 
     outCount++;
     
-    request.get('http://localhost:6969', opts, function (err, resp, v) {
+    request.get('http://127.0.0.1:6969', opts, function (err, resp, v) {
 
       outCount--;
       
@@ -88,7 +88,7 @@ const tasks = Array.apply(null, Array(19000)).map(function (n: any, x: number) {
   }
 });
 
-async.parallelLimit(tasks, 35, function (err) {
+async.parallelLimit(tasks, 335, function (err) {
   if (err) throw err;
   console.log('passed.');
 });

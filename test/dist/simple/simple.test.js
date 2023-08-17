@@ -5,7 +5,7 @@ const request = require("request");
 const assert = require("assert");
 const util = require("util");
 let outCount = 0;
-const tasks = Array.apply(null, Array(19000)).map(function (n, x) {
+const tasks = Array.apply(null, Array(59000)).map(function (n, x) {
     return function (cb) {
         console.log('starting number', x);
         const r = Math.random();
@@ -44,7 +44,7 @@ const tasks = Array.apply(null, Array(19000)).map(function (n, x) {
         }, 18800);
         opts.qs.haven = JSON.stringify(qs);
         outCount++;
-        request.get('http://localhost:6969', opts, function (err, resp, v) {
+        request.get('http://127.0.0.1:6969', opts, function (err, resp, v) {
             outCount--;
             clearTimeout(to);
             if (err) {
@@ -66,7 +66,7 @@ const tasks = Array.apply(null, Array(19000)).map(function (n, x) {
         });
     };
 });
-async.parallelLimit(tasks, 35, function (err) {
+async.parallelLimit(tasks, 335, function (err) {
     if (err)
         throw err;
     console.log('passed.');

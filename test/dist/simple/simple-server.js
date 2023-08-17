@@ -76,6 +76,6 @@ app.use(function (err, req, res, next) {
         }, 10);
     }
 });
-app.listen(6969, function () {
+app.listen(6969, '127.0.0.1', function () {
     console.log('app is listening.');
 });
