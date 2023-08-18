@@ -20,7 +20,7 @@ export interface HavenOptions {
 }
 
 export interface HavenDomain extends Domain {
-  havenUuid: number,
+  havenId: number,
   _havenRequest: Request,
   _havenResponse: Response
 }
@@ -95,9 +95,9 @@ const handleGlobalErrors = (resMap: Map<number, Response>, opts?: Partial<HavenO
     const d = process.domain as HavenDomain;
     const emitter = haven.emitter;
     
-    if (d && d.havenUuid) {
+    if (d && d.havenId) {
       
-      let res = resMap.get(d.havenUuid);
+      let res = resMap.get(d.havenId);
       
       if (res) {
         
@@ -148,7 +148,7 @@ const handleGlobalErrors = (resMap: Map<number, Response>, opts?: Partial<HavenO
     
     let d: any = null;
     
-    if (p && p.domain && p.domain.havenUuid) {
+    if (p && p.domain && p.domain.havenId) {
       d = p.domain;
     } else if (process.domain && (<any>process.domain).havenUuid) {
       d = process.domain;
@@ -222,6 +222,7 @@ export const haven: Haven = (opts?) => {
   }
   
   const getErrorTrace = (e: any) => {
+
     if (opts && opts.showStackTracesInResponse === false) {
       return e && e.message || util.inspect(e || 'no error trace available');
     }
@@ -231,7 +232,7 @@ export const haven: Haven = (opts?) => {
   return (req, res, next) => {
     
     const d = domain.create() as HavenDomain; // create a new domain for this request
-    const v = d.havenUuid = havenId++;
+    const v = d.havenId = havenId++;
     resMap.set(v, res);
 
     (req as any)._havenDomain = d;
