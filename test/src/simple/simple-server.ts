@@ -24,7 +24,6 @@ process.once('uncaughtException', function (e) {
 
 process.once('unhandledRejection', function (e: any) {
   console.error('we have unhandledRejection: ', e);
-  
 });
 
 app.use(function (req: any, res, next) {

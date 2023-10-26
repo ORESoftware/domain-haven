@@ -79,16 +79,46 @@ const getErrorObject = function (e: any) {
   return e || new Error('Unknown/falsy error, this is a dummy error.');
 };
 
+const isProd = (
+  String(process.env.DOMAIN_HAVEN_PROD).toUpperCase()  === 'true' ||
+  String(process.env.NODE_ENV).toUpperCase() === 'PRODUCTION' ||
+  String(process.env.NODE_ENV).toUpperCase() === 'PROD'
+);
+
+const inProdMessage = '(In Production, Cannot Display Error Trace).'
+const noStackTracesMessage = '(Domain-Haven Flag Set to No Stack Traces, Cannot Display Error Trace).'
+
+interface InspectedError {
+  errorObj: any,
+  errorAsString: string
+}
+
 const handleGlobalErrors = (resMap: Map<number, Response>, opts?: Partial<HavenOptions>) => {
   
   const auto = !(opts && opts.auto === false);
-  
-  const getErrorTrace = function (e: any) {
-    if (opts && opts.showStackTracesInResponse === false) {
-      return e && e.message || util.inspect(e);
+
+  const getErrorTrace = function (e: any) : InspectedError {
+
+    if(isProd){
+      return {
+        errorObj: null,
+        errorAsString: inProdMessage
+      };
     }
-    return e && e.stack || util.inspect(e);
+
+    if (opts && opts.showStackTracesInResponse === false) {
+      return {
+        errorObj: null,
+        errorAsString: noStackTracesMessage
+      };
+    }
+
+    return {
+      errorObj: e,
+      errorAsString: util.inspect(e)
+    }
   };
+
   
   process.on('uncaughtException', e => {
     
@@ -106,6 +136,12 @@ const handleGlobalErrors = (resMap: Map<number, Response>, opts?: Partial<HavenO
         }
         
         if (!auto || res.headersSent) {
+
+          if(emitter.listenerCount('exception') < 1){
+            console.error('error trapped by domain-haven package:',getErrorObject(e));
+            return;
+          }
+
           return emitter.emit('exception', <HavenException>{
             message: 'Uncaught exception was pinned to a request/response pair.',
             error: getErrorObject(e),
@@ -118,14 +154,24 @@ const handleGlobalErrors = (resMap: Map<number, Response>, opts?: Partial<HavenO
         }
         
         return res.status(500).json({
-          trappedByDomainHavenMiddleware: true,
-          uncaughtException: true,
-          error: getErrorTrace(e)
+
+          meta: {
+            'domain-haven': {
+              trapped: true,
+              uncaughtException: true,
+            }
+          },
+          errorInfo: getErrorTrace(e)
         });
         
       }
     }
-    
+
+
+    if(emitter.listenerCount('exception') < 1){
+      console.error('error trapped by domain-haven package:', getErrorObject(e));
+    }
+
     emitter.emit('exception', <HavenException>{
       message: 'Uncaught exception could NOT be pinned to a request/response pair.',
       error: getErrorObject(e),
@@ -145,7 +191,8 @@ const handleGlobalErrors = (resMap: Map<number, Response>, opts?: Partial<HavenO
   });
   
   process.on('unhandledRejection', (e, p: HavenPromise) => {
-    
+
+    const emitter = haven.emitter;
     let d: any = null;
     
     if (p && p.domain && p.domain.havenId) {
@@ -164,8 +211,13 @@ const handleGlobalErrors = (resMap: Map<number, Response>, opts?: Partial<HavenO
           log.error('Warning, response headers were already sent for request. Error:', util.inspect(e));
         }
         
-        if (!auto || res.headersSent) {
-          return haven.emitter.emit('rejection', <HavenRejection>{
+        if (!auto && emitter.listenerCount('rejection') > 0) {
+
+          if(emitter.listenerCount('rejection') < 1){
+            console.error('An error (promise rejection) was trapped by domain-haven package:', getErrorObject(e));
+          }
+
+          return emitter.emit('rejection', <HavenRejection>{
             message: 'Unhandled rejection was pinned to a request/response.',
             error: getErrorObject(e),
             unhandledRejection: true,
@@ -176,14 +228,26 @@ const handleGlobalErrors = (resMap: Map<number, Response>, opts?: Partial<HavenO
             domain: d
           });
         }
-        
-        return res.status(500).json({
-          trappedByDomainHavenMiddleware: true,
-          unhandledRejection: true,
-          error: getErrorTrace(e)
-        });
-        
+
+        try {
+          res.status(500).json({
+            meta: {
+              'domain-haven': {
+                trapped: true,
+                unhandledRejection: true
+              }
+            },
+            error: getErrorTrace(e)
+          });
+        } catch(err){
+          log.error(err);
+        }
+
       }
+    }
+
+    if(emitter.listenerCount('rejection') < 1){
+      log.error('error (promise rejection) untrapped by domain-haven package:', getErrorObject(e));
     }
     
     haven.emitter.emit('rejection', <HavenRejection>{
@@ -221,12 +285,26 @@ export const haven: Haven = (opts?) => {
     handleGlobalErrors(resMap, opts);
   }
   
-  const getErrorTrace = (e: any) => {
+  const getErrorTrace = (e: any) : InspectedError => {
+
+    if(isProd){
+      return {
+        errorObj: null,
+        errorAsString: inProdMessage
+      };
+    }
 
     if (opts && opts.showStackTracesInResponse === false) {
-      return e && e.message || util.inspect(e || 'no error trace available');
+      return   {
+        errorObj: null,
+        errorAsString: noStackTracesMessage
+      };
     }
-    return e && e.stack || util.inspect(e || 'no error trace available');
+
+    return {
+      errorObj: e,
+      errorAsString: util.inspect(e)
+    };
   };
   
   return (req, res, next) => {
@@ -249,29 +327,37 @@ export const haven: Haven = (opts?) => {
     
     d.once('error', e => {
       
-      if (auto) {
+      if (auto || haven.emitter.listenerCount('trapped') < 1) {
         
         if (res.headersSent) {
           log.error('Warning, headers already sent for response. Error:', util.inspect(e));
-          return;
         }
-        
-        return res.status(500).json({
-          trappedByDomainHavenMiddleware: true,
-          error: getErrorTrace(e)
-        });
-        
+
+        try{
+          res.status(500).json({
+            meta: {
+              'domain-haven': {
+                trapped: true
+              }
+            },
+            errorInfo: getErrorTrace(e)
+          });
+        } catch(err){
+          log.error(err);
+        }
       }
-      
-      haven.emitter.emit('trapped', <HavenTrappedError>{
-        message: 'Uncaught exception was pinned to a request/response pair.',
-        error: getErrorObject(e),
-        pinned: true,
-        uncaughtException: true,
-        request: req,
-        response: res,
-        domain: d || null
-      });
+      else {
+
+        haven.emitter.emit('trapped', <HavenTrappedError>{
+          message: 'Uncaught exception was pinned to a request/response pair.',
+          error: getErrorObject(e),
+          pinned: true,
+          uncaughtException: true,
+          request: req,
+          response: res,
+          domain: d || null
+        });
+      }
       
     });
     
