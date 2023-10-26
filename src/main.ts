@@ -124,23 +124,22 @@ const handleGlobalErrors = (resMap: Map<number, Response>, opts?: Partial<HavenO
     
     const d = process.domain as HavenDomain;
     const emitter = haven.emitter;
-    
+
+    if(emitter.listenerCount('exception') < 1){
+      log.error('error trapped by domain-haven package:',getErrorObject(e));
+    }
+
     if (d && d.havenId) {
       
       let res = resMap.get(d.havenId);
-      
+
       if (res) {
         
         if (res.headersSent) {
           log.error('Warning, response headers were already sent for request. Error:', util.inspect(e));
         }
         
-        if (!auto || res.headersSent) {
-
-          if(emitter.listenerCount('exception') < 1){
-            console.error('error trapped by domain-haven package:',getErrorObject(e));
-            return;
-          }
+        if (!auto && emitter.listenerCount('exception') > 0) {
 
           return emitter.emit('exception', <HavenException>{
             message: 'Uncaught exception was pinned to a request/response pair.',
@@ -152,24 +151,22 @@ const handleGlobalErrors = (resMap: Map<number, Response>, opts?: Partial<HavenO
             domain: d
           });
         }
-        
-        return res.status(500).json({
 
-          meta: {
-            'domain-haven': {
-              trapped: true,
-              uncaughtException: true,
-            }
-          },
-          errorInfo: getErrorTrace(e)
-        });
-        
+        try{
+          res.status(500).json({
+            meta: {
+              'domain-haven': {
+                trapped: true,
+                uncaughtException: true,
+              }
+            },
+            errorInfo: getErrorTrace(e)
+          });
+        } catch(err) {
+          log.error(err);
+        }
+
       }
-    }
-
-
-    if(emitter.listenerCount('exception') < 1){
-      console.error('error trapped by domain-haven package:', getErrorObject(e));
     }
 
     emitter.emit('exception', <HavenException>{
@@ -200,6 +197,10 @@ const handleGlobalErrors = (resMap: Map<number, Response>, opts?: Partial<HavenO
     } else if (process.domain && (<any>process.domain).havenUuid) {
       d = process.domain;
     }
+
+    if(emitter.listenerCount('rejection') < 1){
+      log.error('error (promise rejection) untrapped by domain-haven package:', getErrorObject(e));
+    }
     
     if (d) {
       
@@ -212,10 +213,6 @@ const handleGlobalErrors = (resMap: Map<number, Response>, opts?: Partial<HavenO
         }
         
         if (!auto && emitter.listenerCount('rejection') > 0) {
-
-          if(emitter.listenerCount('rejection') < 1){
-            console.error('An error (promise rejection) was trapped by domain-haven package:', getErrorObject(e));
-          }
 
           return emitter.emit('rejection', <HavenRejection>{
             message: 'Unhandled rejection was pinned to a request/response.',
@@ -244,28 +241,26 @@ const handleGlobalErrors = (resMap: Map<number, Response>, opts?: Partial<HavenO
         }
 
       }
+    } else {
+
+      haven.emitter.emit('rejection', <HavenRejection>{
+        message: 'Unhandled rejection could NOT be pinned to a request/response.',
+        error: getErrorObject(e),
+        pinned: false,
+        unhandledRejection: true,
+        request: null,
+        response: null,
+        promise: p || null,
+        domain: d || null
+      });
+
+      if (auto) {
+        log.error('Unhandled rejection could NOT be pinned to a request/response:', util.inspect(e));
+        log.error('It is possible that the response has finished writing before the error occurs.');
+      }
+
     }
 
-    if(emitter.listenerCount('rejection') < 1){
-      log.error('error (promise rejection) untrapped by domain-haven package:', getErrorObject(e));
-    }
-    
-    haven.emitter.emit('rejection', <HavenRejection>{
-      message: 'Unhandled rejection could NOT be pinned to a request/response.',
-      error: getErrorObject(e),
-      pinned: false,
-      unhandledRejection: true,
-      request: null,
-      response: null,
-      promise: p || null,
-      domain: d || null
-    });
-    
-    if (auto) {
-      log.error('Unhandled rejection could NOT be pinned to a request/response:', util.inspect(e));
-      log.error('It is possible that the response has finished writing before the error occurs.');
-      // process.exit(1);
-    }
   });
 };
 
@@ -326,11 +321,15 @@ export const haven: Haven = (opts?) => {
     });
     
     d.once('error', e => {
+
+      if(haven.emitter.listenerCount('trapped') < 1){
+
+      }
       
       if (auto || haven.emitter.listenerCount('trapped') < 1) {
         
         if (res.headersSent) {
-          log.error('Warning, headers already sent for response. Error:', util.inspect(e));
+          log.error('Warning: headers already sent for response. Error:', util.inspect(e));
         }
 
         try{
