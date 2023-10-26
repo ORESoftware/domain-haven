@@ -142,6 +142,10 @@ app.use(<ErrorRequestHandler>function (err, req, res, next) {
   
 });
 
+app.on('error', (err) => {
+  console.error('app.on(error) => ', err);
+});
+
 app.listen(6969, '127.0.0.1', function () {
   console.log('app is listening.');
 });

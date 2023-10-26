@@ -79,8 +79,10 @@ const tasks = Array.apply(null, Array(59000)).map(function (n: any, x: number) {
       catch (err) {
         return cb(err);
       }
-      
-      console.log('done with number', x, outCount);
+      finally {
+        console.log('done with number', x, outCount);
+      }
+
       cb(null);
     });
     
@@ -88,7 +90,13 @@ const tasks = Array.apply(null, Array(59000)).map(function (n: any, x: number) {
   }
 });
 
-async.parallelLimit(tasks, 335, function (err) {
+const startTime = Date.now()
+
+// node 20 / 340 - 32283
+// node 20 / 100 - 44964
+// node 20 / 200 - 32652
+
+async.parallelLimit(tasks, 50, function (err) {
   if (err) throw err;
-  console.log('passed.');
+  console.log('passed in millis:', Date.now() - startTime);
 });
