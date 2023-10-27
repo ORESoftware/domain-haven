@@ -93,7 +93,7 @@ interface InspectedError {
   errorAsString: string
 }
 
-const handleGlobalErrors = (resMap: Map<number, Response>, opts?: Partial<HavenOptions>) => {
+const handleGlobalErrors = (resMap: Map<number, Response>, emitter: EventEmitter, opts?: Partial<HavenOptions>) => {
   
   const auto = !(opts && opts.auto === false);
 
@@ -123,7 +123,6 @@ const handleGlobalErrors = (resMap: Map<number, Response>, opts?: Partial<HavenO
   process.on('uncaughtException', e => {
     
     const d = process.domain as HavenDomain;
-    const emitter = haven.emitter;
 
     if(emitter.listenerCount('exception') < 1){
       log.error('error trapped by domain-haven package:',getErrorObject(e));
@@ -189,13 +188,12 @@ const handleGlobalErrors = (resMap: Map<number, Response>, opts?: Partial<HavenO
   
   process.on('unhandledRejection', (e, p: HavenPromise) => {
 
-    const emitter = haven.emitter;
-    let d: any = null;
+    let d: HavenDomain = null;
     
     if (p && p.domain && p.domain.havenId) {
       d = p.domain;
-    } else if (process.domain && (<any>process.domain).havenUuid) {
-      d = process.domain;
+    } else if (process.domain && (<any>process.domain).havenId) {
+      d = process.domain as HavenDomain;
     }
 
     if(emitter.listenerCount('rejection') < 1){
@@ -204,7 +202,7 @@ const handleGlobalErrors = (resMap: Map<number, Response>, opts?: Partial<HavenO
     
     if (d) {
       
-      let res = resMap.get(d.havenUuid);
+      let res = resMap.get(d.havenId);
       
       if (res) {
         
@@ -243,7 +241,7 @@ const handleGlobalErrors = (resMap: Map<number, Response>, opts?: Partial<HavenO
       }
     } else {
 
-      haven.emitter.emit('rejection', <HavenRejection>{
+      emitter.emit('rejection', <HavenRejection>{
         message: 'Unhandled rejection could NOT be pinned to a request/response.',
         error: getErrorObject(e),
         pinned: false,
@@ -266,8 +264,6 @@ const handleGlobalErrors = (resMap: Map<number, Response>, opts?: Partial<HavenO
 
 export interface Haven {
   (opts?: Partial<HavenOptions>): RequestHandler;
-  
-  emitter?: EventEmitter;
 }
 
 export const haven: Haven = (opts?) => {
@@ -275,9 +271,19 @@ export const haven: Haven = (opts?) => {
   let havenId = 1;
   const resMap = new Map<number, Response>();
   const auto = !(opts && opts.auto === false);
+
+  const emitter = new EventEmitter();
+
+  const onAny = (v: HavenBlunder) => {
+    emitter.emit('blunder', v);
+  };
+
+  emitter.on('rejection', onAny);
+  emitter.on('exception', onAny);
+  emitter.on('trapped', onAny);
   
   if (!(opts && opts.handleGlobalErrors === false)) {
-    handleGlobalErrors(resMap, opts);
+    handleGlobalErrors(resMap, emitter, opts);
   }
   
   const getErrorTrace = (e: any) : InspectedError => {
@@ -322,11 +328,11 @@ export const haven: Haven = (opts?) => {
     
     d.once('error', e => {
 
-      if(haven.emitter.listenerCount('trapped') < 1){
+      if(emitter.listenerCount('trapped') < 1){
 
       }
       
-      if (auto || haven.emitter.listenerCount('trapped') < 1) {
+      if (auto || emitter.listenerCount('trapped') < 1) {
         
         if (res.headersSent) {
           log.error('Warning: headers already sent for response. Error:', util.inspect(e));
@@ -347,7 +353,7 @@ export const haven: Haven = (opts?) => {
       }
       else {
 
-        haven.emitter.emit('trapped', <HavenTrappedError>{
+        emitter.emit('trapped', <HavenTrappedError>{
           message: 'Uncaught exception was pinned to a request/response pair.',
           error: getErrorObject(e),
           pinned: true,
@@ -367,15 +373,6 @@ export const haven: Haven = (opts?) => {
   
 };
 
-haven.emitter = new EventEmitter();
-
-const onAny = (v: HavenBlunder) => {
-  haven.emitter.emit('blunder', v);
-};
-
-haven.emitter.on('rejection', onAny);
-haven.emitter.on('exception', onAny);
-haven.emitter.on('trapped', onAny);
 
 export default haven;
 

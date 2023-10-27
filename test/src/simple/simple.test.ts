@@ -88,7 +88,7 @@ const tasks = Array.apply(null, Array(59000)).map(function (n: any, x: number) {
   }
 });
 
-async.parallelLimit(tasks, 335, function (err) {
+async.parallelLimit(tasks, 250, function (err) {
   if (err) throw err;
   console.log('passed.');
 });
