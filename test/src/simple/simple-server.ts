@@ -12,17 +12,16 @@ declare global {
 
 import {ErrorRequestHandler} from "express";
 import * as express from 'express';
-import haven from 'domain-haven';
+import {haven, HavenHandler} from 'domain-haven';
 
-import {HavenBlunder, HavenTrappedError, HavenException, HavenRejection} from "domain-haven";
 
 const app = express();
 
-process.once('uncaughtException', function (e) {
+process.on('uncaughtException', function (e) {
   console.error('we have uncaughtException', e);
 });
 
-process.once('unhandledRejection', function (e: any) {
+process.on('unhandledRejection', function (e: any) {
   console.error('we have unhandledRejection: ', e);
 });
 
@@ -34,44 +33,48 @@ app.use(function (req: any, res, next) {
   next();
 });
 
-// haven.emitter.on('error', function (v: HavenError) {
-//   if (v.pinned) {
-//     const res = v.response;
-//     res.json({error: v.error.stack});
-//   }
-//   else {
-//     console.error('error,had to exit.');
-//     process.exit(1);
-//   }
-//
-// });
-//
-//
-// haven.emitter.on('rejection', function (v: HavenRejection) {
-//   if (v.pinned) {
-//     const res = v.response;
-//     res.json({error: v.error.stack});
-//   }
-//   else {
-//     console.error('rejection,had to exit.');
-//     process.exit(1);
-//   }
-//
-// });
 
-haven.emitter.on('blunder', function (v: HavenBlunder) {
-  // console.log('blunder:', v);
-  if (v.pinned) {
-    const res = v.response;
-    res.json({error: v.error.stack});
-  } else {
-    console.error('exception,had to exit.');
-    process.exit(1);
+app.use(haven(new HavenHandler({
+  opts: {auto: false},
+  onPinnedError(info, req, res) {
+    console.log('info:', info);
+    res.json({error: info.error.errorAsString});
   }
-  
-});
+})));
 
-app.use(haven({auto: false}));
+//
+// app.use(haven({
+//
+//   opts:{
+//     auto: false
+//   },
+//
+//   onPinnedError(info, req, res){
+//     // console.log('info:', info);
+//     res.json({error: info.error.errorAsString});
+//   },
+//
+//   onPinnedUncaughtException(info, req, res){
+//     // console.log('info uncahgth exc:', info);
+//     res.json({error: info.error.errorAsString});
+//   },
+//
+//   onPinnedUnhandledRejection(info, req, res){
+//     // console.log('info unhandled rej:', info);
+//     res.json({error: info.error.errorAsString});
+//   },
+//
+//   onUnpinnedUncaughtException(info){
+//     console.error('uncaught exception, had to exit:',info);
+//     process.exit(1);
+//   },
+//
+//   onUnpinnedUnhandledRejection(info){
+//     console.error('unhandled rejection, had to exit:', info);
+//     process.exit(1);
+//   }
+//
+// }));
 
 const delay = function (amount: number) {
   return new Promise(res => {
@@ -80,27 +83,27 @@ const delay = function (amount: number) {
 };
 
 app.use(function (req: any, res, next) {
-  
+
   // console.log('havenData:', req.havenData);
-  
+
   if (req.havenData.throwSync) {
     throw new Error('sync throw A');
   }
-  
+
   const to = req.havenData.timeoutAmount;
-  
+
   if (req.havenData.timeoutThrow) {
     return setTimeout(function () {
       throw new Error('timeout throw B');
     }, 100);
   }
-  
+
   if (req.havenData.promiseThrow) {
     return delay(to).then(function () {
       throw new Error('promise throw C');
     });
   }
-  
+
   if (req.havenData.asyncPromiseThrow) {
     return delay(to).then(function () {
       setTimeout(function () {
@@ -108,26 +111,40 @@ app.use(function (req: any, res, next) {
       }, 100);
     });
   }
-  
+
   next();
-  
+
+});
+
+app.use((req, res, next) => {
+
+  if (req.havenData.asyncAwaitInnerThrow) {
+    (async () => {
+      await 'whatevver 1';
+      await 'whatever 2';
+      return Promise.reject('async await throw G inner');
+    })();
+  } else {
+    next();
+  }
+
 });
 
 app.use(async function (req: any, res, next) {
-  
+
   if (req.havenData.asyncAwaitThrow) {
     throw new Error('async await throw E');
   }
-  
+
   if (req.havenData.asyncAwaitTimeoutThrow) {
     return setTimeout(function () {
       throw new Error('async await throw F');
     }, req.havenData.timeoutAmount);
-    
+
   }
-  
+
   next();
-  
+
 });
 
 app.use(<ErrorRequestHandler>function (err, req, res, next) {
@@ -138,7 +155,7 @@ app.use(<ErrorRequestHandler>function (err, req, res, next) {
       }
     }, 10);
   }
-  
+
 });
 
 app.listen(6969, '127.0.0.1', function () {

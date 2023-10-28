@@ -41,9 +41,13 @@ const tasks = Array.apply(null, Array(59000)).map(function (n: any, x: number) {
       qs.asyncAwaitTimeoutThrow = true;
       m = 'async await throw F';
     }
-    else if (r < 0.90) {
+    else if (r < 0.80) {
       qs.asyncAwaitThrow = true;
       m = 'async await throw E';
+    }
+    else if (r < 0.90) {
+      qs.asyncAwaitInnerThrow = true;
+      m = 'async await throw G inner';
     }
     else {
       qs.promiseThrow = true;
@@ -88,7 +92,7 @@ const tasks = Array.apply(null, Array(59000)).map(function (n: any, x: number) {
   }
 });
 
-async.parallelLimit(tasks, 250, function (err) {
+async.parallelLimit(tasks, 200, function (err) {
   if (err) throw err;
   console.log('passed.');
 });
