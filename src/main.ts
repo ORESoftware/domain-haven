@@ -55,7 +55,11 @@ const noStackTracesMessage = '(Domain-Haven Flag Set to No Stack Traces, Cannot 
 
 interface InspectedError {
   originalErrorObj: any,
-  errorAsString: string
+  errorAsString: string,
+  errorObjParsed: {
+    message: string,
+    stack: string
+  }
 }
 
 interface HavenInfo {
@@ -109,36 +113,36 @@ export class HavenHandler implements IHavenHandler {
       this.opts.revealStackTraces = v.opts.revealStackTraces;
     }
 
-    if(v.onPinnedError){
-      if(typeof v.onPinnedError !== 'function'){
+    if (v.onPinnedError) {
+      if (typeof v.onPinnedError !== 'function') {
         throw new Error('the "onPinnedError" is not a function.');
       }
       this.onPinnedError = v.onPinnedError
     }
 
-    if(v.onPinnedUncaughtException){
-      if(typeof v.onUnpinnedUncaughtException !== 'function'){
+    if (v.onPinnedUncaughtException) {
+      if (typeof v.onUnpinnedUncaughtException !== 'function') {
         throw new Error('the "onUnpinnedUncaughtException" is not a function.');
       }
       this.onPinnedUncaughtException = v.onPinnedUncaughtException
     }
 
-    if(v.onPinnedUnhandledRejection){
-      if(typeof v.onPinnedUnhandledRejection !== 'function'){
+    if (v.onPinnedUnhandledRejection) {
+      if (typeof v.onPinnedUnhandledRejection !== 'function') {
         throw new Error('the "onPinnedUnhandledRejection" is not a function.');
       }
       this.onPinnedUnhandledRejection = v.onPinnedUnhandledRejection
     }
 
-    if(v.onUnpinnedUncaughtException){
-      if(typeof v.onUnpinnedUncaughtException !== 'function'){
+    if (v.onUnpinnedUncaughtException) {
+      if (typeof v.onUnpinnedUncaughtException !== 'function') {
         throw new Error('the "onUnpinnedUncaughtException" is not a function.');
       }
       this.onUnpinnedUncaughtException = v.onUnpinnedUncaughtException
     }
 
-    if(v.onUnpinnedUnhandledRejection){
-      if(typeof v.onUnpinnedUnhandledRejection !== 'function'){
+    if (v.onUnpinnedUnhandledRejection) {
+      if (typeof v.onUnpinnedUnhandledRejection !== 'function') {
         throw new Error('the "onUnpinnedUnhandledRejection" is not a function.');
       }
       this.onUnpinnedUnhandledRejection = v.onUnpinnedUnhandledRejection
@@ -159,26 +163,67 @@ export class HavenHandler implements IHavenHandler {
 
 }
 
+const getParsedObject = (e: any, depth: number) => {
+
+  if (!(e && typeof e === 'object')) {
+    return {
+      type: typeof e,
+      value: e
+    }
+  }
+
+  if(depth > 4){
+    return e;
+  }
+
+  if(Array.isArray(e) && e.length > 5){
+    return e; // TODO copy all props
+  }
+
+  if(Array.isArray(e)){
+    const z = [];
+    for(const v of e){
+      z.push(getParsedObject(v, depth + 1))
+    }
+    return e;
+  }
+
+  const v = {} as any;
+
+  const descriptors = Object.getOwnPropertyDescriptors(e);
+
+  for (const propertyName in descriptors) {
+    if (descriptors.hasOwnProperty(propertyName)) {
+      v[propertyName] = e[propertyName];
+    }
+  }
+
+  return v;
+
+};
 
 const getErrorTrace = function (e: any, opts: HavenOptions): InspectedError {
 
   if (isProd) {
     return {
       originalErrorObj: null,
-      errorAsString: inProdMessage
+      errorAsString: inProdMessage,
+      errorObjParsed: getParsedObject(e, 1)
     };
   }
 
   if (opts && opts.revealStackTraces === false) {
     return {
       originalErrorObj: null,
-      errorAsString: noStackTracesMessage
+      errorAsString: noStackTracesMessage,
+      errorObjParsed: getParsedObject(e, 1)
     };
   }
 
   return {
     originalErrorObj: e,
-    errorAsString: util.inspect(e)
+    errorAsString: util.inspect(e),
+    errorObjParsed: getParsedObject(e, 1)
   }
 };
 

@@ -25,6 +25,12 @@ process.on('unhandledRejection', function (e: any) {
   console.error('we have unhandledRejection: ', e);
 });
 
+let reqNum = 1;
+app.use((req,res,next) => {
+  console.log('server 2 request #', reqNum++, 'received');
+  next();
+});
+
 app.use(function (req: any, res, next) {
   req.havenData = JSON.parse(req.query.haven);
   if (!Number.isInteger(req.havenData.timeoutAmount)) {
@@ -34,47 +40,52 @@ app.use(function (req: any, res, next) {
 });
 
 
-app.use(haven(new HavenHandler({
-  opts: {auto: false},
-  onPinnedError(info, req, res) {
-    console.log('info:', info);
-    res.json({error: info.error.errorAsString});
-  }
-})));
-
-//
-// app.use(haven({
-//
-//   opts:{
-//     auto: false
-//   },
-//
-//   onPinnedError(info, req, res){
-//     // console.log('info:', info);
+// app.use(haven(new HavenHandler({
+//   opts: {auto: true},
+//   onPinnedError(info, req, res) {
+//     console.log('info:', info);
 //     res.json({error: info.error.errorAsString});
-//   },
-//
-//   onPinnedUncaughtException(info, req, res){
-//     // console.log('info uncahgth exc:', info);
-//     res.json({error: info.error.errorAsString});
-//   },
-//
-//   onPinnedUnhandledRejection(info, req, res){
-//     // console.log('info unhandled rej:', info);
-//     res.json({error: info.error.errorAsString});
-//   },
-//
-//   onUnpinnedUncaughtException(info){
-//     console.error('uncaught exception, had to exit:',info);
-//     process.exit(1);
-//   },
-//
-//   onUnpinnedUnhandledRejection(info){
-//     console.error('unhandled rejection, had to exit:', info);
-//     process.exit(1);
 //   }
-//
-// }));
+// })));
+
+
+app.use(haven({
+
+  opts:{
+    auto: false
+  },
+
+  onPinnedError(info, req, res){
+    // console.log('info:', info);
+    res.json({error: info.error.errorAsString});
+  },
+
+  onPinnedUncaughtException(info, req, res){
+    // console.log('info uncahgth exc:', info);
+    res.json({error: info.error.errorAsString});
+  },
+
+  onPinnedUnhandledRejection(info, req, res){
+    // console.log('info unhandled rej:', info);
+    res.json({error: info.error.errorAsString});
+  },
+
+  onUnpinnedUncaughtException(info){
+    console.error('uncaught exception, had to exit:',info);
+    process.exit(1);
+  },
+
+  onUnpinnedUnhandledRejection(info){
+    console.error('unhandled rejection, had to exit:', info);
+    process.exit(1);
+  }
+
+}));
+
+app.use((req,res,next) => {
+  console.log('server 2 haven middleware passed.');
+  next();
+});
 
 const delay = function (amount: number) {
   return new Promise(res => {
@@ -158,6 +169,9 @@ app.use(<ErrorRequestHandler>function (err, req, res, next) {
 
 });
 
-app.listen(6969, '127.0.0.1', function () {
+app.listen(7072, '127.0.0.1', function () {
   console.log('app is listening.');
+  app.emit('haven/listening', '(no data yet)');
 });
+
+export {app};

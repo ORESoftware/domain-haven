@@ -10,7 +10,7 @@ let outCount = 0;
 const tasks = Array.apply(null, Array(59000)).map(function (n: any, x: number) {
   return function (cb: Function) {
     
-    console.log('starting number', x);
+
     const r = Math.random();
     let m: string;
     
@@ -61,8 +61,11 @@ const tasks = Array.apply(null, Array(59000)).map(function (n: any, x: number) {
     opts.qs.haven = JSON.stringify(qs);
 
     outCount++;
+
+    const port = [7071,7072,7073][Math.floor(3*Math.random())];
+    console.log('starting number:', x, {port});
     
-    request.get('http://127.0.0.1:6969', opts, function (err, resp, v) {
+    request.get(`http://127.0.0.1:${port}`, opts, function (err, resp, v) {
 
       outCount--;
       
@@ -87,8 +90,7 @@ const tasks = Array.apply(null, Array(59000)).map(function (n: any, x: number) {
       console.log('done with number', x, outCount);
       cb(null);
     });
-    
-    
+
   }
 });
 
