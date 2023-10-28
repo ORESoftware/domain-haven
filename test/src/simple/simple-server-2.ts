@@ -55,17 +55,17 @@ app.use(haven({
     auto: false
   },
 
-  onPinnedError(info, req, res){
+  async onPinnedError(info, req, res){
     // console.log('info:', info);
     res.json({error: info.error.errorAsString});
   },
 
-  onPinnedUncaughtException(info, req, res){
+  async onPinnedUncaughtException(info, req, res){
     // console.log('info uncahgth exc:', info);
     res.json({error: info.error.errorAsString});
   },
 
-  onPinnedUnhandledRejection(info, req, res){
+  async onPinnedUnhandledRejection(info, req, res){
     // console.log('info unhandled rej:', info);
     res.json({error: info.error.errorAsString});
   },

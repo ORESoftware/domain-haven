@@ -27,7 +27,7 @@ process.on('unhandledRejection', function (e: any) {
 
 let reqNum = 1;
 app.use((req,res,next) => {
-  console.log('server 1 request #', reqNum++, 'received');
+  console.log('server 4 request #', reqNum++, 'received');
   next();
 });
 
@@ -40,17 +40,17 @@ app.use(function (req: any, res, next) {
 });
 
 
-app.use(haven(new HavenHandler({
+app.use(haven({
   opts: {auto: true},
   async onPinnedError(info, req, res) {
-    // console.log('info:', info);
+    console.log('info:', info);
     res.json({error: info.error.errorAsString});
-  }
-})));
+  },
+}));
 
 
 app.use((req,res,next) => {
-  console.log('server 1 haven middleware passed.');
+  console.log('server 4 haven middleware passed.');
   next();
 });
 
@@ -172,7 +172,7 @@ app.use(<ErrorRequestHandler>function (err, req, res, next) {
 });
 
 
-app.listen(7071, '127.0.0.1', function () {
+app.listen(7074, '127.0.0.1', function () {
   console.log('app is listening.');
   app.emit('haven/listening', '(no data yet)');
 });

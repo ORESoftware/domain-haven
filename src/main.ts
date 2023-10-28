@@ -1,7 +1,7 @@
 'use strict';
 
 //dts
-import {RequestHandler, Response, Request, NextFunction} from 'express';
+import {RequestHandler, Response, Request} from 'express';
 
 //core
 import util = require('util');
@@ -9,6 +9,7 @@ import util = require('util');
 //npm
 import * as domain from "domain";
 import {Domain} from 'domain';
+
 
 export interface HavenOptions {
   auto?: boolean;
@@ -71,35 +72,35 @@ interface HavenInfo {
   havenType: 'error' | 'unhandledRejection' | 'uncaughtException'
 }
 
+type HookReturnType = Promise<void | symbol>
+
 interface IHavenHandler {
 
   opts?: HavenOptions
 
-  onPinnedError?(err: HavenInfo, req: Request, res: Response): void;
+  onPinnedError?(err: HavenInfo, req: Request, res: Response): HookReturnType;
 
-  onPinnedUnhandledRejection?(err: HavenInfo, req: Request, res: Response): void;
+  onPinnedUnhandledRejection?(err: HavenInfo, req: Request, res: Response): HookReturnType;
 
-  onPinnedUncaughtException?(err: HavenInfo, req: Request, res: Response): void;
+  onPinnedUncaughtException?(err: HavenInfo, req: Request, res: Response): HookReturnType;
 
-  onUnpinnedUncaughtException?(err: HavenInfo): void;
+  onUnpinnedUncaughtException?(err: HavenInfo): HookReturnType;
 
-  onUnpinnedUnhandledRejection?(err: HavenInfo): void;
+  onUnpinnedUnhandledRejection?(err: HavenInfo): HookReturnType;
 }
 
 
 export class HavenHandler implements IHavenHandler {
 
-  opts?: HavenOptions
+  opts: HavenOptions ={
+    auto: true,
+    handleGlobalErrors: true,
+    revealStackTraces: true
+  }
 
   constructor(v?: IHavenHandler) {
 
     v = v || {};
-
-    this.opts = {
-      auto: true,
-      handleGlobalErrors: true,
-      revealStackTraces: true
-    };
 
     if (v.opts && typeof v.opts.handleGlobalErrors === 'boolean') {
       this.opts.handleGlobalErrors = v.opts.handleGlobalErrors;
@@ -150,18 +151,25 @@ export class HavenHandler implements IHavenHandler {
 
   }
 
+
   // will be HavenError not any
-  onPinnedError?(info: HavenInfo, req: Request, res: Response): void;
+  onPinnedError?(info: HavenInfo, req: Request, res: Response): HookReturnType;
+  async onPinnedError?(info: HavenInfo, req: Request, res: Response): HookReturnType;
 
-  onPinnedUnhandledRejection?(info: HavenInfo, req: Request, res: Response): void;
+  onPinnedUnhandledRejection?(info: HavenInfo, req: Request, res: Response): HookReturnType;
+  async onPinnedUnhandledRejection?(info: HavenInfo, req: Request, res: Response): HookReturnType;
 
-  onPinnedUncaughtException?(info: HavenInfo, req: Request, res: Response): void;
+  onPinnedUncaughtException?(info: HavenInfo, req: Request, res: Response): HookReturnType;
+  async onPinnedUncaughtException?(info: HavenInfo, req: Request, res: Response): HookReturnType;
 
-  onUnpinnedUncaughtException?(info: HavenInfo): void;
+  onUnpinnedUncaughtException?(info: HavenInfo): HookReturnType;
+  async onUnpinnedUncaughtException?(info: HavenInfo): HookReturnType;
 
-  onUnpinnedUnhandledRejection?(info: HavenInfo): void;
+  onUnpinnedUnhandledRejection?(info: HavenInfo): HookReturnType;
+  async onUnpinnedUnhandledRejection?(info: HavenInfo): HookReturnType;
 
 }
+
 
 const getParsedObject = (e: any, depth: number) => {
 
@@ -172,17 +180,17 @@ const getParsedObject = (e: any, depth: number) => {
     }
   }
 
-  if(depth > 4){
+  if (depth > 4) {
     return e;
   }
 
-  if(Array.isArray(e) && e.length > 5){
+  if (Array.isArray(e) && e.length > 5) {
     return e; // TODO copy all props
   }
 
-  if(Array.isArray(e)){
+  if (Array.isArray(e)) {
     const z = [];
-    for(const v of e){
+    for (const v of e) {
       z.push(getParsedObject(v, depth + 1))
     }
     return e;
@@ -202,7 +210,10 @@ const getParsedObject = (e: any, depth: number) => {
 
 };
 
-const getErrorTrace = function (e: any, opts: HavenOptions): InspectedError {
+type Falsy = null | undefined | false | 0 | '';
+type Truthy<T> = T extends Falsy ? never : T;
+
+const getErrorTrace = function (e: any, opts: HavenOptions & Truthy<any>): InspectedError {
 
   if (isProd) {
     return {
@@ -228,9 +239,11 @@ const getErrorTrace = function (e: any, opts: HavenOptions): InspectedError {
 };
 
 
+// const PassBackToLibrary = Symbol('passback-control-back-to-domain-haven-lib')
+
 process.on('uncaughtException', e => {
 
-  const errorType = 'uncaughtException';
+  // const errorType = 'uncaughtException';
   const d = process.domain as HavenDomain;
 
   log.error('error trapped by domain-haven package:', getErrorObject(e));
@@ -253,10 +266,11 @@ process.on('uncaughtException', e => {
   const [z, req, res, opts] = (havenMap.get(d.havenId) || []);
   havenMap.delete(d.havenId);
 
-  if (!(z && res)) {
+  if (!(z && req && res && opts)) {
+
     log.error('domain-haven sees an uncaughtException, but cannot act:', e);
 
-    if (typeof z.onUnpinnedUncaughtException === 'function') {
+    if (z && typeof z.onUnpinnedUncaughtException === 'function') {
       z.onUnpinnedUncaughtException({
         message: 'Uncaught exception could NOT be pinned to a request/response pair.',
         error: getErrorTrace(e, opts),
@@ -269,6 +283,8 @@ process.on('uncaughtException', e => {
       log.error('It is possible that the response has finished writing before the error occurs.');
       log.error('To remove these logs, add an "onUnpinnedUncaughtException" handler.');
     }
+
+    return;
   }
 
   const auto = !(opts && opts.auto === false);
@@ -309,7 +325,7 @@ process.on('uncaughtException', e => {
 
 process.on('unhandledRejection', (e, p: HavenPromise) => {
 
-  let d: HavenDomain = null;
+  let d: HavenDomain = <unknown>null as HavenDomain;
 
   if (p && p.domain && p.domain.havenId) {
     d = p.domain;
@@ -332,13 +348,13 @@ process.on('unhandledRejection', (e, p: HavenPromise) => {
   d.removeAllListeners();
   d.exit();
 
-  const [z, req, res, opts] = havenMap.get(d.havenId);
+  const [z, req, res, opts] = (havenMap.get(d.havenId) || []);
   havenMap.delete(d.havenId);
 
-  if (!res) {
+  if (!(z && req && res && opts)) {
     log.error('domain-haven sees an unhandledRejection, but cannot act:', e);
 
-    if (typeof z.onUnpinnedUncaughtException === 'function') {
+    if (z && typeof z.onUnpinnedUncaughtException === 'function') {
       z.onUnpinnedUncaughtException({
         message: 'Unhandled rejection could NOT be pinned to a request/response.',
         error: getErrorTrace(e, opts),
@@ -356,6 +372,7 @@ process.on('unhandledRejection', (e, p: HavenPromise) => {
   }
 
   const auto = !(opts && opts.auto === false);
+  const errorTrace = getErrorTrace(e, opts);
 
   if (res.headersSent) {
     log.error('Warning, response headers were already sent for request. Error:', util.inspect(e));
@@ -365,7 +382,7 @@ process.on('unhandledRejection', (e, p: HavenPromise) => {
 
     z.onPinnedUnhandledRejection({
       message: 'Unhandled rejection was pinned to a request/response.',
-      error: getErrorTrace(e, opts),
+      error: errorTrace,
       pinned: true,
       havenType: 'unhandledRejection',
       promise: p || null,
@@ -383,8 +400,8 @@ process.on('unhandledRejection', (e, p: HavenPromise) => {
           errorType: 'unhandledRejection'
         }
       },
-      error: getErrorTrace(e, opts).errorAsString,
-      errorInfo: getErrorTrace(e, opts)
+      error: errorTrace.errorAsString,
+      errorInfo: errorTrace
     });
   } catch (err) {
     log.error(err);
@@ -400,10 +417,21 @@ export interface Haven {
 let havenId = 1;
 const havenMap = new Map<number, [HavenHandler, Request, Response, any]>();
 
-export const haven: Haven = (z?: HavenHandler) => {
+export const haven: Haven = (x?: HavenHandler) => {
 
-    if (!z) {
-      z = new HavenHandler();
+    if (!x) {
+      x = new HavenHandler();
+    }
+
+
+    const z = x;  // ughh, for TS compiler, and to create a constant..
+
+    if (!z.opts) {
+      z.opts = {
+        auto: true,
+        revealStackTraces: true,
+        handleGlobalErrors: true,
+      }
     }
 
     {
@@ -436,7 +464,6 @@ export const haven: Haven = (z?: HavenHandler) => {
       }
     }
 
-
     return (req, res, next) => {
 
       const d = domain.create() as HavenDomain; // create a new domain for this request
@@ -456,6 +483,7 @@ export const haven: Haven = (z?: HavenHandler) => {
       });
 
       const send = (e: any) => {
+        const errorTrace = getErrorTrace(e, opts);
         try {
           res.status(500).json({
             meta: {
@@ -464,8 +492,8 @@ export const haven: Haven = (z?: HavenHandler) => {
                 errorType: 'error'
               }
             },
-            error: getErrorTrace(e, opts).errorAsString,
-            errorInfo: getErrorTrace(e, opts)
+            error: errorTrace.errorAsString,
+            errorInfo: errorTrace
           });
         } catch (err) {
           log.error(err);
@@ -515,7 +543,7 @@ export const haven: Haven = (z?: HavenHandler) => {
   }
 ;
 
-
+export const middleware = haven;
 export default haven;
 
 export const r2gSmokeTest = function () {

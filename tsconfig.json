@@ -1,8 +1,13 @@
 {
   "compilerOptions": {
     "outDir": "dist",
+    "strict": true,
+    "strictNullChecks": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
     "skipLibCheck": true,
     "declaration": true,
+    "noUnusedLocals": true,
     "baseUrl": ".",
     "rootDir": "src",
     "allowJs": false,
@@ -11,13 +16,14 @@
     "noImplicitAny": true,
     "removeComments": true,
     "allowUnreachableCode": true,
+    "noImplicitReturns": true,
     "lib": [
       "es2019",
       "es2020",
       "es2021"
     ]
   },
-  "allowJs": true,
+  "allowJs": false,
   "compileOnSave": false,
   "include": [
     "src"

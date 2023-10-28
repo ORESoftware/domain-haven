@@ -8,12 +8,15 @@
     "allowJs": false,
     "target": "es2018",
     "module": "commonjs",
+    "strictNullChecks": true,
     "noImplicitAny": true,
     "removeComments": true,
     "allowUnreachableCode": true,
     "lib": [
-      "es2017",
-      "es2018"
+      "es2018",
+      "es2019",
+      "es2020",
+      "es2021"
     ]
   },
   "allowJs": true,

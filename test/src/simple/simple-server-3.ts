@@ -42,8 +42,8 @@ app.use(function (req: any, res, next) {
 
 app.use(haven(new HavenHandler({
   opts: {auto: false},
-  onPinnedError(info, req, res) {
-    console.log('info:', info);
+  async onPinnedError(info, req, res) {
+    // console.log('info:', info);
     res.json({error: info.error.errorAsString});
   }
 })));

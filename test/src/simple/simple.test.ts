@@ -62,7 +62,7 @@ const tasks = Array.apply(null, Array(59000)).map(function (n: any, x: number) {
 
     outCount++;
 
-    const port = [7071,7072,7073][Math.floor(3*Math.random())];
+    const port = [7071,7072,7073,7074][Math.floor(4*Math.random())];
     console.log('starting number:', x, {port});
     
     request.get(`http://127.0.0.1:${port}`, opts, function (err, resp, v) {
