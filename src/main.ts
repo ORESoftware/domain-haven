@@ -58,8 +58,8 @@ interface InspectedError {
   originalErrorObj: any,
   errorAsString: string,
   errorObjParsed: {
-    message: string,
-    stack: string
+    message?: string,
+    stack?: string
   }
 }
 
@@ -171,7 +171,7 @@ export class HavenHandler implements IHavenHandler {
 }
 
 
-const getParsedObject = (e: any, depth: number) => {
+const getParsedObject = (e: any, depth: number) : any => {
 
   if (!(e && typeof e === 'object')) {
     return {
@@ -193,7 +193,7 @@ const getParsedObject = (e: any, depth: number) => {
     for (const v of e) {
       z.push(getParsedObject(v, depth + 1))
     }
-    return e;
+    return z;
   }
 
   const v = {} as any;
@@ -219,7 +219,9 @@ const getErrorTrace = function (e: any, opts: HavenOptions & Truthy<any>): Inspe
     return {
       originalErrorObj: null,
       errorAsString: inProdMessage,
-      errorObjParsed: getParsedObject(e, 1)
+      errorObjParsed: {
+        message: inProdMessage
+      }
     };
   }
 
@@ -227,13 +229,15 @@ const getErrorTrace = function (e: any, opts: HavenOptions & Truthy<any>): Inspe
     return {
       originalErrorObj: null,
       errorAsString: noStackTracesMessage,
-      errorObjParsed: getParsedObject(e, 1)
+      errorObjParsed: {
+        message: noStackTracesMessage
+      }
     };
   }
 
   return {
     originalErrorObj: e,
-    errorAsString: util.inspect(e),
+    errorAsString: typeof e === 'string' ? e : util.inspect(e),
     errorObjParsed: getParsedObject(e, 1)
   }
 };
@@ -293,11 +297,13 @@ process.on('uncaughtException', e => {
     log.error('Warning, response headers were already sent for request. Error:', util.inspect(e));
   }
 
+  const errorTrace = getErrorTrace(e,opts);
+
   if (!auto && typeof z.onPinnedUncaughtException === 'function') {
 
     z.onPinnedUncaughtException({
       message: 'Uncaught exception was pinned to a request/response pair.',
-      error: getErrorTrace(e, opts),
+      error: errorTrace,
       pinned: true,
       havenType: 'uncaughtException',
       domain: d || null
@@ -314,8 +320,8 @@ process.on('uncaughtException', e => {
           type: 'uncaughtException'
         }
       },
-      error: getErrorTrace(e, opts).errorAsString,
-      errorInfo: getErrorTrace(e, opts)
+      error: errorTrace.errorAsString,
+      errorInfo: errorTrace
     });
   } catch (err) {
     log.error(err);
@@ -439,11 +445,11 @@ export const haven: Haven = (x?: HavenHandler) => {
 
       const opts = z.opts;
 
-      if (opts.auto) {
+      if (opts.auto && isProd) {
         log.info('domain-haven will handle errors/exceptions/rejections automatically.');
       }
 
-      if (opts.revealStackTraces) {
+      if (opts.revealStackTraces && !isProd) {
         log.info('caution: domain-haven will reveal error messages and stack traces to the client.\n' +
           'Use NODE_ENV=prod; or opts.revealStackTraces = false; to switch off.');
       }
