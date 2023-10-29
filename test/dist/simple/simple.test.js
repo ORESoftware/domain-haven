@@ -1,3 +1,4 @@
+#!/usr/bin/env ts-node
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const async = require("async");
@@ -7,7 +8,6 @@ const util = require("util");
 let outCount = 0;
 const tasks = Array.apply(null, Array(59000)).map(function (n, x) {
     return function (cb) {
-        console.log('starting number', x);
         const r = Math.random();
         let m;
         const qs = { timeoutAmount: Math.ceil(30 * Math.random()) };
@@ -31,9 +31,13 @@ const tasks = Array.apply(null, Array(59000)).map(function (n, x) {
             qs.asyncAwaitTimeoutThrow = true;
             m = 'async await throw F';
         }
-        else if (r < 0.90) {
+        else if (r < 0.80) {
             qs.asyncAwaitThrow = true;
             m = 'async await throw E';
+        }
+        else if (r < 0.90) {
+            qs.asyncAwaitInnerThrow = true;
+            m = 'async await throw G inner';
         }
         else {
             qs.promiseThrow = true;
@@ -44,7 +48,9 @@ const tasks = Array.apply(null, Array(59000)).map(function (n, x) {
         }, 18800);
         opts.qs.haven = JSON.stringify(qs);
         outCount++;
-        request.get('http://127.0.0.1:6969', opts, function (err, resp, v) {
+        const port = [7071, 7072, 7073, 7074][Math.floor(4 * Math.random())];
+        console.log('starting number:', x, { port });
+        request.get(`http://127.0.0.1:${port}`, opts, function (err, resp, v) {
             outCount--;
             clearTimeout(to);
             if (err) {
@@ -66,7 +72,7 @@ const tasks = Array.apply(null, Array(59000)).map(function (n, x) {
         });
     };
 });
-async.parallelLimit(tasks, 335, function (err) {
+async.parallelLimit(tasks, 200, function (err) {
     if (err)
         throw err;
     console.log('passed.');

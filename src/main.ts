@@ -9,6 +9,7 @@ import util = require('util');
 //npm
 import * as domain from "domain";
 import {Domain} from 'domain';
+import * as safe from '@oresoftware/safe-stringify'
 
 
 export interface HavenOptions {
@@ -256,6 +257,8 @@ const sendResponse = (res: Response, type: HavenErrorType, errorTrace: Inspected
     log.warning('Warning: headers already sent for response. Error:', errorTrace);
   }
 
+  debugger;
+
   try {
     res.status(500);
   } catch (err) {
@@ -263,16 +266,26 @@ const sendResponse = (res: Response, type: HavenErrorType, errorTrace: Inspected
   }
 
   try {
-    res.json({
-      meta: {
-        'domain-haven': {
-          trapped: true,
-          type
-        }
-      },
-      error: errorTrace.errorAsString,
-      errorInfo: errorTrace
-    });
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('content-type', 'application/json'); // just b/c these computers iz gyyyy
+  } catch (err) {
+    log.error(err);
+  }
+
+  try {
+    res.send(
+      // safe stringify can handle circular refs, and other issues that JSON.stringify cannot
+      safe.stringify({
+        meta: {
+          'domain-haven': {
+            trapped: true,
+            type
+          }
+        },
+        error: errorTrace.errorAsString,
+        errorInfo: errorTrace
+      })
+    );
 
   } catch (err) {
     log.error(err);
