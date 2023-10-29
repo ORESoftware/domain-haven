@@ -1,3 +1,5 @@
+#!/usr/bin/env ts-node
+
 import http = require('http');
 import async = require('async');
 import request = require('request');
@@ -9,7 +11,6 @@ let outCount = 0;
 
 const tasks = Array.apply(null, Array(59000)).map(function (n: any, x: number) {
   return function (cb: Function) {
-    
 
     const r = Math.random();
     let m: string;

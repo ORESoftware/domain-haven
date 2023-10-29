@@ -23,6 +23,60 @@ export {app};
 
 ```
 
+### In Production
+
+```bash
+### use these env vars to switch off stack-traces from leaking sensitive data to client(s):
+
+export NODE_ENV=prod
+export NODE_ENV=production
+export DOMAIN_HAVEN_PROD=true
+
+```
+
+alternatively, use this option to not reveal stack-traces programmatically:
+
+
+```typescript
+
+import * as haven from 'domain-haven';
+
+haven.middleware({
+  opts: {
+    revealStackTraces: false
+  }
+});
+
+// where the above is equivalent to:
+
+import haven from 'domain-haven';
+
+haven({
+  opts: {
+    revealStackTraces: false
+  }
+});
+
+
+
+```
+### In Production, continued:
+
+In some rare cases, we may wish to enable stack traces shown to the client for a particular request.
+You can override behavior for a particular request by doing this:
+
+
+```typescript
+
+app.use((req,res,next) => {
+  if(req.query.secret === 'magic-spell'){  // you control this, serverside
+    req.havenOpts = {revealStackTraces: true, overrideProd: true};
+  }
+  next()
+});
+
+```
+
 # Behavior
 
 By default, if an `uncaughtException` or `unhandledRejection` occurs and a request/response pair can be 
@@ -36,92 +90,19 @@ _______________________________________________
 On the other hand, if the developer wants full control of what response to send, etc, use:
 
 ```js
-app.use(haven({auto:false}));
-```
+app.use(haven({opts:{auto:false}}));
 
-and then use this event handler:
-
-```js
-
-haven.emitter.on('blunder', function (v: HavenBlunder) {  
-  
-  if(v.pinned){
-     const req = v.request, res = v.response;
-     // you now know what request/response caused the error, do what you want with that info
-     res.json({error: v.error.message});
-   }
-   else{
-      // the error could not be pinned to a request/response pair
-      // you can decide to shutdown or do whatever you want
-   }
-   
-});
-```
-
-If you wish to have separate handlers for uncaughtException, unhandledRejection, and a pure domain-trapped error, use:
-
-```js
-haven.emitter.on('exception', function (v: HavenException) {
-    // there was an uncaughtException
-});
-
-haven.emitter.on('rejection', function (v: HavenRejection) {
-    // there was an unhandledRejection
-});
-
-haven.emitter.on('trapped', function (v: HavenTrappedError) {
-    // the runtime error was trapped by the domain error handler =>  d.once('error', function(e){});
-});
-
-```
-
-where HavenException, HavenRejection and HavenTrappedError are as follows:
-
-```typescript
-
-
-export interface HavenTrappedError {
-  message: string,
-  domain: Domain | null,
-  error: Error,
-  request: Request | null
-  response: Response | null,
-  pinned: true | false,
-}
-
-export interface HavenException {
-  message: string,
-  domain: Domain | null,
-  uncaughtException: true,
-  error: Error,
-  request: Request | null
-  response: Response | null,
-  pinned: true | false,
-}
-
-export interface HavenRejection {
-  message: string,
-  domain: Domain| null,
-  unhandledRejection: true,
-  error: Error,
-  request: Request | null
-  response: Response | null,
-  pinned: true | false,
-  promise: Promise<any> | null
-}
-
-export type HavenBlunder = HavenException | HavenTrappedError | HavenRejection;
 
 ```
 
 
 
 # Performance
-
+TBD
 
 
 # Usage
-
+TBD
 
 
 ### If you just want to capture errors that don't make it to the global scope, use:
@@ -138,7 +119,7 @@ app.use(haven({showStackTracesInResponse: false}));
 
 
 
-# How it works:
+## How it works:
 
 What we do is use something similar to this beautiful piece of middleware:
 
@@ -147,16 +128,12 @@ const havenMiddleware = function (req, res, next) {
     
     const d = domain.create(); // create a new domain for this request
     
-    res.once('finish', function () {
+    res.once('finish', () => {
       d.exit();
     });
     
-    d.once('error', function (e) {
-      if (!res.headersSent) {
-        res.status(500).json({
-          error: util.inspect(e ? e.stack || e : e)
-        });
-      }
+    d.once('error',  (e) => {
+        res.status(500).json({error: e});
     });
     
     d.run(next);  // we invoke the next middleware

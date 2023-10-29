@@ -15,6 +15,7 @@ export interface HavenOptions {
   auto?: boolean;
   handleGlobalErrors?: boolean;
   revealStackTraces?: boolean;
+  overrideProd?: boolean
 }
 
 export interface HavenDomain extends Domain {
@@ -32,6 +33,20 @@ const log = {
   warning: console.error.bind(console, '[domain-haven package] WARN:'),
 };
 
+
+const modVars = {
+  hasRun: false,
+  isProd: (
+    String(process.env.DOMAIN_HAVEN_PROD).toUpperCase() === 'TRUE' ||
+    String(process.env.NODE_ENV).toUpperCase() === 'PRODUCTION' ||
+    String(process.env.NODE_ENV).toUpperCase() === 'PROD'
+  ),
+  overrideProd: process.env.DOMAIN_HAVEN_PROD_OVERRIDE === 'true',
+  inProdMessage: '(In Production, Cannot Display Error Trace).',
+  noStackTracesMessage: '(Domain-Haven Flag Set to No Stack Traces, Cannot Display Error Trace).'
+};
+
+
 const getErrorObject = function (e: any): Error {
 
   if (e && typeof e.stack === 'string' && typeof e.message === 'string') {
@@ -45,14 +60,6 @@ const getErrorObject = function (e: any): Error {
   return e || new Error('Unknown/falsy error, this is a dummy error.');
 };
 
-const isProd = (
-  String(process.env.DOMAIN_HAVEN_PROD).toUpperCase() === 'TRUE' ||
-  String(process.env.NODE_ENV).toUpperCase() === 'PRODUCTION' ||
-  String(process.env.NODE_ENV).toUpperCase() === 'PROD'
-);
-
-const inProdMessage = '(In Production, Cannot Display Error Trace).'
-const noStackTracesMessage = '(Domain-Haven Flag Set to No Stack Traces, Cannot Display Error Trace).'
 
 interface InspectedError {
   originalErrorObj: any,
@@ -63,16 +70,18 @@ interface InspectedError {
   }
 }
 
+type HavenErrorType = 'error' | 'unhandledRejection' | 'uncaughtException'
+
 interface HavenInfo {
   message: string,
   pinned: boolean
   domain: Domain
   promise?: Promise<any>
   error: InspectedError
-  havenType: 'error' | 'unhandledRejection' | 'uncaughtException'
+  havenType: HavenErrorType
 }
 
-type HookReturnType = any
+type HookReturnType = any;
 
 interface IHavenHandler {
 
@@ -95,7 +104,8 @@ export class HavenHandler<T extends IHavenHandler> implements IHavenHandler {
   opts: HavenOptions = {
     auto: true,
     handleGlobalErrors: true,
-    revealStackTraces: true
+    revealStackTraces: true,
+    overrideProd: false
   }
 
   constructor(x?: T) {
@@ -210,24 +220,27 @@ type Truthy<T> = T extends Falsy ? never : T;
 
 const getErrorTrace = function (e: any, opts: HavenOptions & Truthy<any>): InspectedError {
 
-  if (isProd) {
-    return {
-      originalErrorObj: null,
-      errorAsString: inProdMessage,
-      errorObjParsed: {
-        message: inProdMessage
-      }
-    };
-  }
+  if (!modVars.overrideProd && !opts.overrideProd) {
 
-  if (opts && opts.revealStackTraces === false) {
-    return {
-      originalErrorObj: null,
-      errorAsString: noStackTracesMessage,
-      errorObjParsed: {
-        message: noStackTracesMessage
-      }
-    };
+    if (modVars.isProd) {
+      return {
+        originalErrorObj: null,
+        errorAsString: modVars.inProdMessage,
+        errorObjParsed: {
+          message: modVars.inProdMessage
+        }
+      };
+    }
+
+    if (opts && opts.revealStackTraces === false) {
+      return {
+        originalErrorObj: null,
+        errorAsString: modVars.noStackTracesMessage,
+        errorObjParsed: {
+          message: modVars.noStackTracesMessage
+        }
+      };
+    }
   }
 
   return {
@@ -237,18 +250,47 @@ const getErrorTrace = function (e: any, opts: HavenOptions & Truthy<any>): Inspe
   }
 };
 
+const sendResponse = (res: Response, type: HavenErrorType, errorTrace: InspectedError) => {
+
+  if (res.headersSent) {
+    log.warning('Warning: headers already sent for response. Error:', errorTrace);
+  }
+
+  try {
+    res.status(500);
+  } catch (err) {
+    log.error(err);
+  }
+
+  try {
+    res.json({
+      meta: {
+        'domain-haven': {
+          trapped: true,
+          type
+        }
+      },
+      error: errorTrace.errorAsString,
+      errorInfo: errorTrace
+    });
+
+  } catch (err) {
+    log.error(err);
+  }
+
+};
+
 
 // const PassBackToLibrary = Symbol('passback-control-back-to-domain-haven-lib')
 
-let hasRun = false;
 
 const runOnce = () => {
 
-  if(hasRun){
+  if (modVars.hasRun) {
     return;
   }
 
-  hasRun = true;
+  modVars.hasRun = true;
 
   process.on('uncaughtException', e => {
 
@@ -297,11 +339,6 @@ const runOnce = () => {
     }
 
     const auto = !(opts && opts.auto === false);
-
-    if (res.headersSent) {
-      log.error('Warning, response headers were already sent for request. Error:', util.inspect(e));
-    }
-
     const errorTrace = getErrorTrace(e, opts);
 
     if (!auto && typeof z.onPinnedUncaughtException === 'function') {
@@ -317,24 +354,12 @@ const runOnce = () => {
       return;
     }
 
-    try {
-      res.status(500).json({
-        meta: {
-          'domain-haven': {
-            trapped: true,
-            type: 'uncaughtException'
-          }
-        },
-        error: errorTrace.errorAsString,
-        errorInfo: errorTrace
-      });
-    } catch (err) {
-      log.error(err);
-    }
+    // send response
+    sendResponse(res, 'uncaughtException', errorTrace);
 
   });
 
-  process.on('unhandledRejection', (e, p: HavenPromise) => {
+  process.on('unhandledRejection', (e, p?: HavenPromise) => {
 
     let d: HavenDomain = <unknown>null as HavenDomain;
 
@@ -371,7 +396,7 @@ const runOnce = () => {
           error: getErrorTrace(e, opts),
           pinned: false,
           havenType: 'uncaughtException',
-          promise: p || null,
+          promise: <any>p || null,
           domain: d || null
         });
       } else {
@@ -385,10 +410,6 @@ const runOnce = () => {
     const auto = !(opts && opts.auto === false);
     const errorTrace = getErrorTrace(e, opts);
 
-    if (res.headersSent) {
-      log.error('Warning, response headers were already sent for request. Error:', util.inspect(e));
-    }
-
     if (!auto && typeof z.onPinnedUnhandledRejection === 'function') {
 
       z.onPinnedUnhandledRejection({
@@ -396,27 +417,15 @@ const runOnce = () => {
         error: errorTrace,
         pinned: true,
         havenType: 'unhandledRejection',
-        promise: p || null,
+        promise: <any>p || null,
         domain: d || null
       }, req, res);
 
       return;
     }
 
-    try {
-      res.status(500).json({
-        meta: {
-          'domain-haven': {
-            trapped: true,
-            errorType: 'unhandledRejection'
-          }
-        },
-        error: errorTrace.errorAsString,
-        errorInfo: errorTrace
-      });
-    } catch (err) {
-      log.error(err);
-    }
+    // send response
+    sendResponse(res, 'unhandledRejection', errorTrace);
 
   });
 
@@ -425,135 +434,110 @@ const runOnce = () => {
 let havenId = 1;
 const havenMap = new Map<number, [HavenHandler<any>, Request, Response, any]>();
 
-export const haven = <T extends HavenHandler<T>>(x?: T) : RequestHandler => {
+export const haven = <T extends HavenHandler<T>>(x?: T): RequestHandler => {
 
-    if (!x) {
-      x = new HavenHandler() as any;
+  if (!x) {
+    x = new HavenHandler() as any;
+  }
+
+  const z = x as HavenHandler<T>;  // ughh, for TS compiler, and to create a constant..
+
+  if (!z.opts) {
+    z.opts = {
+      auto: true,
+      revealStackTraces: true,
+      handleGlobalErrors: true,
+    }
+  }
+
+  if (!modVars.hasRun && z.opts.handleGlobalErrors) {
+    // register the global handlers only once
+    runOnce();
+  }
+
+  {
+    // local vars only in this block
+
+    const opts = z.opts;
+
+    if (opts.auto && modVars.isProd) {
+      log.info('domain-haven will handle errors/exceptions/rejections automatically.');
     }
 
-    const z = x as HavenHandler<T>;  // ughh, for TS compiler, and to create a constant..
-
-    if (!z.opts) {
-      z.opts = {
-        auto: true,
-        revealStackTraces: true,
-        handleGlobalErrors: true,
-      }
+    if (opts.revealStackTraces && !modVars.isProd) {
+      log.info('caution: domain-haven will reveal error messages and stack traces to the client.\n' +
+        'Use NODE_ENV=prod; or opts.revealStackTraces = false; to switch off.');
     }
 
-    if(!hasRun && z.opts.handleGlobalErrors){
-      // register the global handlers only once
-      runOnce();
-    }
+    if (!opts.auto) {
 
-    {
-      // local vars only in this block
-
-      const opts = z.opts;
-
-      if (opts.auto && isProd) {
-        log.info('domain-haven will handle errors/exceptions/rejections automatically.');
+      if (typeof z.onPinnedError !== 'function') {
+        log.error('warning: auto handling set to false, but "onPinnedError" is not implemented.');
       }
 
-      if (opts.revealStackTraces && !isProd) {
-        log.info('caution: domain-haven will reveal error messages and stack traces to the client.\n' +
-          'Use NODE_ENV=prod; or opts.revealStackTraces = false; to switch off.');
+      if (typeof z.onPinnedUnhandledRejection !== 'function') {
+        log.error('warning: auto handling set to false, but "onPinnedUnhandledRejection" is not implemented.');
       }
 
-      if (!opts.auto) {
-
-        if (typeof z.onPinnedError !== 'function') {
-          log.error('warning: auto handling set to false, but "onPinnedError" is not implemented.');
-        }
-
-        if (typeof z.onPinnedUnhandledRejection !== 'function') {
-          log.error('warning: auto handling set to false, but "onPinnedUnhandledRejection" is not implemented.');
-        }
-
-        if (typeof z.onPinnedUncaughtException !== 'function') {
-          log.error('warning: auto handling set to false, but "onPinnedUncaughtException" is not implemented.');
-        }
+      if (typeof z.onPinnedUncaughtException !== 'function') {
+        log.error('warning: auto handling set to false, but "onPinnedUncaughtException" is not implemented.');
       }
     }
+  }
 
-    return (req, res, next) => {
+  return (req, res, next) => {
 
-      const d = domain.create() as HavenDomain; // create a new domain for this request
-      const v = d.havenId = havenId++;
-      let opts = z.opts;
+    const d = domain.create() as HavenDomain; // create a new domain for this request
+    const v = d.havenId = havenId++;
+    let opts = z.opts;
 
-      if ((req as any).havenOpts && typeof (req as any).havenOpts === 'object') {
-        opts = Object.assign({}, opts, (req as any).havenOpts);
-      }
-
-      havenMap.set(v, [z, req, res, opts]);
-
-      res.once('finish', () => {
-        havenMap.delete(v);
-        d.exit();
-        d.removeAllListeners();
-      });
-
-      const send = (e: any) => {
-        const errorTrace = getErrorTrace(e, opts);
-        try {
-          res.status(500).json({
-            meta: {
-              'domain-haven': {
-                trapped: true,
-                errorType: 'error'
-              }
-            },
-            error: errorTrace.errorAsString,
-            errorInfo: errorTrace
-          });
-        } catch (err) {
-          log.error(err);
-        }
-      }
-
-      d.once('error', e => {
-
-        // just as a precaution
-        havenMap.delete(v);
-        d.exit();
-        d.removeAllListeners();
-
-        if (opts.auto || typeof z.onPinnedError !== 'function') {
-
-          if (res.headersSent) {
-            log.warning('Warning: headers already sent for response. Error:', util.inspect(e));
-          }
-
-          send(e);
-          return;
-
-        } else {
-
-          if (typeof z.onPinnedError !== 'function') {
-
-            send(e);
-
-          } else {
-
-            z.onPinnedError({
-              message: 'Uncaught exception was pinned to a request/response pair.',
-              error: getErrorTrace(e, opts),
-              pinned: true,
-              havenType: 'uncaughtException',
-              domain: d || null
-            }, req, res);
-          }
-        }
-      });
-
-      // we invoke the next middleware
-      d.run(next);
-
+    if ((req as any).havenOpts && typeof (req as any).havenOpts === 'object') {
+      opts = Object.assign({}, opts, (req as any).havenOpts);
     }
+
+    havenMap.set(v, [z, req, res, opts]);
+
+    res.once('finish', () => {
+      havenMap.delete(v);
+      d.exit();
+      d.removeAllListeners();
+    });
+
+    d.once('error', e => {
+
+      // just as a precaution
+      havenMap.delete(v);
+      d.exit();
+      d.removeAllListeners();
+
+      const errorTrace = getErrorTrace(e, opts);
+
+      if (opts.auto || typeof z.onPinnedError !== 'function') {
+        sendResponse(res, 'error', errorTrace);
+        return;
+      }
+
+      if (typeof z.onPinnedError !== 'function') {
+        sendResponse(res, 'error', errorTrace);
+      } else {
+        z.onPinnedError({
+          message: 'Uncaught exception was pinned to a request/response pair.',
+          error: getErrorTrace(e, opts),
+          pinned: true,
+          havenType: 'uncaughtException',
+          domain: d || null
+        }, req, res);
+      }
+
+    });
+
+    // we invoke the next middleware
+    d.run(next);
 
   }
-;
+
+};
+
 
 export const middleware = haven;
 export default haven;

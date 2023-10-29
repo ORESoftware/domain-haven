@@ -2,7 +2,10 @@ import * as haven from './main';
 
 
 haven.middleware({
-  opts: {auto: true}
+  opts: {
+    auto: true,
+    revealStackTraces: false
+  }
 });
 
 haven.middleware(new haven.HavenHandler({

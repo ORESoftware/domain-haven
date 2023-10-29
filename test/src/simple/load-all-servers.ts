@@ -1,4 +1,4 @@
-
+#!/usr/bin/env ts-node
 
 import * as server1 from './simple-server-1';
 import * as server2 from './simple-server-2';
