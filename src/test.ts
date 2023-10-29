@@ -1,5 +1,6 @@
 import * as haven from './main';
 
+
 haven.middleware({
   opts: {auto: true}
 });

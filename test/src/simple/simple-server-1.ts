@@ -42,9 +42,13 @@ app.use(function (req: any, res, next) {
 
 app.use(haven(new HavenHandler({
   opts: {auto: true},
+
   async onPinnedError(info, req, res) {
     // console.log('info:', info);
     res.json({error: info.error.errorAsString});
+  },
+  onPinnedUnhandledRejection(info, req, res){
+
   }
 })));
 

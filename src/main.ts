@@ -72,7 +72,7 @@ interface HavenInfo {
   havenType: 'error' | 'unhandledRejection' | 'uncaughtException'
 }
 
-type HookReturnType = Promise<void | symbol>
+type HookReturnType = any
 
 interface IHavenHandler {
 
@@ -90,17 +90,17 @@ interface IHavenHandler {
 }
 
 
-export class HavenHandler implements IHavenHandler {
+export class HavenHandler<T extends IHavenHandler> implements IHavenHandler {
 
-  opts: HavenOptions ={
+  opts: HavenOptions = {
     auto: true,
     handleGlobalErrors: true,
     revealStackTraces: true
   }
 
-  constructor(v?: IHavenHandler) {
+  constructor(x?: T) {
 
-    v = v || {};
+    const v = (x || {}) as T;
 
     if (v.opts && typeof v.opts.handleGlobalErrors === 'boolean') {
       this.opts.handleGlobalErrors = v.opts.handleGlobalErrors;
@@ -154,24 +154,19 @@ export class HavenHandler implements IHavenHandler {
 
   // will be HavenError not any
   onPinnedError?(info: HavenInfo, req: Request, res: Response): HookReturnType;
-  async onPinnedError?(info: HavenInfo, req: Request, res: Response): HookReturnType;
 
   onPinnedUnhandledRejection?(info: HavenInfo, req: Request, res: Response): HookReturnType;
-  async onPinnedUnhandledRejection?(info: HavenInfo, req: Request, res: Response): HookReturnType;
 
   onPinnedUncaughtException?(info: HavenInfo, req: Request, res: Response): HookReturnType;
-  async onPinnedUncaughtException?(info: HavenInfo, req: Request, res: Response): HookReturnType;
 
   onUnpinnedUncaughtException?(info: HavenInfo): HookReturnType;
-  async onUnpinnedUncaughtException?(info: HavenInfo): HookReturnType;
 
   onUnpinnedUnhandledRejection?(info: HavenInfo): HookReturnType;
-  async onUnpinnedUnhandledRejection?(info: HavenInfo): HookReturnType;
 
 }
 
 
-const getParsedObject = (e: any, depth: number) : any => {
+const getParsedObject = (e: any, depth: number): any => {
 
   if (!(e && typeof e === 'object')) {
     return {
@@ -245,192 +240,198 @@ const getErrorTrace = function (e: any, opts: HavenOptions & Truthy<any>): Inspe
 
 // const PassBackToLibrary = Symbol('passback-control-back-to-domain-haven-lib')
 
-process.on('uncaughtException', e => {
+let hasRun = false;
 
-  // const errorType = 'uncaughtException';
-  const d = process.domain as HavenDomain;
+const runOnce = () => {
 
-  log.error('error trapped by domain-haven package:', getErrorObject(e));
-
-  if (!(d && d.havenId)) {
-    // this is probably some unrelated uncaughtException
-    log.error('domain-haven sees an uncaughtException, but cannot act:', e);
+  if(hasRun){
     return;
   }
 
-  if (d.alreadyHandled) {
-    return;
-  }
+  hasRun = true;
 
-  d.alreadyHandled = true;
-  // so this routine doesn't get called twice
-  d.removeAllListeners();
-  d.exit();
+  process.on('uncaughtException', e => {
 
-  const [z, req, res, opts] = (havenMap.get(d.havenId) || []);
-  havenMap.delete(d.havenId);
+    // const errorType = 'uncaughtException';
+    const d = process.domain as HavenDomain;
 
-  if (!(z && req && res && opts)) {
+    log.error('error trapped by domain-haven package:', getErrorObject(e));
 
-    log.error('domain-haven sees an uncaughtException, but cannot act:', e);
-
-    if (z && typeof z.onUnpinnedUncaughtException === 'function') {
-      z.onUnpinnedUncaughtException({
-        message: 'Uncaught exception could NOT be pinned to a request/response pair.',
-        error: getErrorTrace(e, opts),
-        pinned: false,
-        havenType: 'uncaughtException',
-        domain: d
-      });
-    } else {
-      log.error('Uncaught exception could NOT be pinned to a request/response:', util.inspect(e));
-      log.error('It is possible that the response has finished writing before the error occurs.');
-      log.error('To remove these logs, add an "onUnpinnedUncaughtException" handler.');
+    if (!(d && d.havenId)) {
+      // this is probably some unrelated uncaughtException
+      log.error('domain-haven sees an uncaughtException, but cannot act:', e);
+      return;
     }
 
-    return;
-  }
+    if (d.alreadyHandled) {
+      return;
+    }
 
-  const auto = !(opts && opts.auto === false);
+    d.alreadyHandled = true;
+    // so this routine doesn't get called twice
+    d.removeAllListeners();
+    d.exit();
 
-  if (res.headersSent) {
-    log.error('Warning, response headers were already sent for request. Error:', util.inspect(e));
-  }
+    const [z, req, res, opts] = (havenMap.get(d.havenId) || []);
+    havenMap.delete(d.havenId);
 
-  const errorTrace = getErrorTrace(e,opts);
+    if (!(z && req && res && opts)) {
 
-  if (!auto && typeof z.onPinnedUncaughtException === 'function') {
+      log.error('domain-haven sees an uncaughtException, but cannot act:', e);
 
-    z.onPinnedUncaughtException({
-      message: 'Uncaught exception was pinned to a request/response pair.',
-      error: errorTrace,
-      pinned: true,
-      havenType: 'uncaughtException',
-      domain: d || null
-    }, req, res);
+      if (z && typeof z.onUnpinnedUncaughtException === 'function') {
+        z.onUnpinnedUncaughtException({
+          message: 'Uncaught exception could NOT be pinned to a request/response pair.',
+          error: getErrorTrace(e, opts),
+          pinned: false,
+          havenType: 'uncaughtException',
+          domain: d
+        });
+      } else {
+        log.error('Uncaught exception could NOT be pinned to a request/response:', util.inspect(e));
+        log.error('It is possible that the response has finished writing before the error occurs.');
+        log.error('To remove these logs, add an "onUnpinnedUncaughtException" handler.');
+      }
 
-    return;
-  }
+      return;
+    }
 
-  try {
-    res.status(500).json({
-      meta: {
-        'domain-haven': {
-          trapped: true,
-          type: 'uncaughtException'
-        }
-      },
-      error: errorTrace.errorAsString,
-      errorInfo: errorTrace
-    });
-  } catch (err) {
-    log.error(err);
-  }
+    const auto = !(opts && opts.auto === false);
 
-});
+    if (res.headersSent) {
+      log.error('Warning, response headers were already sent for request. Error:', util.inspect(e));
+    }
 
-process.on('unhandledRejection', (e, p: HavenPromise) => {
+    const errorTrace = getErrorTrace(e, opts);
 
-  let d: HavenDomain = <unknown>null as HavenDomain;
+    if (!auto && typeof z.onPinnedUncaughtException === 'function') {
 
-  if (p && p.domain && p.domain.havenId) {
-    d = p.domain;
-  } else if (process.domain && (<any>process.domain).havenId) {
-    d = process.domain as HavenDomain;
-  }
-
-  if (!(d && d.havenId)) {
-    // this is most likely some other unrelated unhandledRejection
-    log.error('domain-haven sees an unhandledRejection, but cannot act:', e);
-    return;
-  }
-
-  if (d.alreadyHandled) {
-    return;
-  }
-
-  // so this doesn't called twice
-  d.alreadyHandled = true;
-  d.removeAllListeners();
-  d.exit();
-
-  const [z, req, res, opts] = (havenMap.get(d.havenId) || []);
-  havenMap.delete(d.havenId);
-
-  if (!(z && req && res && opts)) {
-    log.error('domain-haven sees an unhandledRejection, but cannot act:', e);
-
-    if (z && typeof z.onUnpinnedUncaughtException === 'function') {
-      z.onUnpinnedUncaughtException({
-        message: 'Unhandled rejection could NOT be pinned to a request/response.',
-        error: getErrorTrace(e, opts),
-        pinned: false,
+      z.onPinnedUncaughtException({
+        message: 'Uncaught exception was pinned to a request/response pair.',
+        error: errorTrace,
+        pinned: true,
         havenType: 'uncaughtException',
+        domain: d || null
+      }, req, res);
+
+      return;
+    }
+
+    try {
+      res.status(500).json({
+        meta: {
+          'domain-haven': {
+            trapped: true,
+            type: 'uncaughtException'
+          }
+        },
+        error: errorTrace.errorAsString,
+        errorInfo: errorTrace
+      });
+    } catch (err) {
+      log.error(err);
+    }
+
+  });
+
+  process.on('unhandledRejection', (e, p: HavenPromise) => {
+
+    let d: HavenDomain = <unknown>null as HavenDomain;
+
+    if (p && p.domain && p.domain.havenId) {
+      d = p.domain;
+    } else if (process.domain && (<any>process.domain).havenId) {
+      d = process.domain as HavenDomain;
+    }
+
+    if (!(d && d.havenId)) {
+      // this is most likely some other unrelated unhandledRejection
+      log.error('domain-haven sees an unhandledRejection, but cannot act:', e);
+      return;
+    }
+
+    if (d.alreadyHandled) {
+      return;
+    }
+
+    // so this doesn't called twice
+    d.alreadyHandled = true;
+    d.removeAllListeners();
+    d.exit();
+
+    const [z, req, res, opts] = (havenMap.get(d.havenId) || []);
+    havenMap.delete(d.havenId);
+
+    if (!(z && req && res && opts)) {
+      log.error('domain-haven sees an unhandledRejection, but cannot act:', e);
+
+      if (z && typeof z.onUnpinnedUncaughtException === 'function') {
+        z.onUnpinnedUncaughtException({
+          message: 'Unhandled rejection could NOT be pinned to a request/response.',
+          error: getErrorTrace(e, opts),
+          pinned: false,
+          havenType: 'uncaughtException',
+          promise: p || null,
+          domain: d || null
+        });
+      } else {
+        log.error('Unhandled rejection could NOT be pinned to a request/response:', util.inspect(e));
+        log.error('It is possible that the response has finished writing before the error occurs.');
+        log.error('To remove these logs, add an "onUnpinnedUnhandledRejection" handler.');
+      }
+      return;
+    }
+
+    const auto = !(opts && opts.auto === false);
+    const errorTrace = getErrorTrace(e, opts);
+
+    if (res.headersSent) {
+      log.error('Warning, response headers were already sent for request. Error:', util.inspect(e));
+    }
+
+    if (!auto && typeof z.onPinnedUnhandledRejection === 'function') {
+
+      z.onPinnedUnhandledRejection({
+        message: 'Unhandled rejection was pinned to a request/response.',
+        error: errorTrace,
+        pinned: true,
+        havenType: 'unhandledRejection',
         promise: p || null,
         domain: d || null
-      });
-    } else {
-      log.error('Unhandled rejection could NOT be pinned to a request/response:', util.inspect(e));
-      log.error('It is possible that the response has finished writing before the error occurs.');
-      log.error('To remove these logs, add an "onUnpinnedUnhandledRejection" handler.');
+      }, req, res);
+
+      return;
     }
-    return;
-  }
 
-  const auto = !(opts && opts.auto === false);
-  const errorTrace = getErrorTrace(e, opts);
+    try {
+      res.status(500).json({
+        meta: {
+          'domain-haven': {
+            trapped: true,
+            errorType: 'unhandledRejection'
+          }
+        },
+        error: errorTrace.errorAsString,
+        errorInfo: errorTrace
+      });
+    } catch (err) {
+      log.error(err);
+    }
 
-  if (res.headersSent) {
-    log.error('Warning, response headers were already sent for request. Error:', util.inspect(e));
-  }
+  });
 
-  if (!auto && typeof z.onPinnedUnhandledRejection === 'function') {
-
-    z.onPinnedUnhandledRejection({
-      message: 'Unhandled rejection was pinned to a request/response.',
-      error: errorTrace,
-      pinned: true,
-      havenType: 'unhandledRejection',
-      promise: p || null,
-      domain: d || null
-    }, req, res);
-
-    return;
-  }
-
-  try {
-    res.status(500).json({
-      meta: {
-        'domain-haven': {
-          trapped: true,
-          errorType: 'unhandledRejection'
-        }
-      },
-      error: errorTrace.errorAsString,
-      errorInfo: errorTrace
-    });
-  } catch (err) {
-    log.error(err);
-  }
-
-});
-
-
-export interface Haven {
-  (z?: HavenHandler): RequestHandler;
 }
 
 let havenId = 1;
-const havenMap = new Map<number, [HavenHandler, Request, Response, any]>();
+const havenMap = new Map<number, [HavenHandler<any>, Request, Response, any]>();
 
-export const haven: Haven = (x?: HavenHandler) => {
+export const haven = <T extends HavenHandler<T>>(x?: T) : RequestHandler => {
 
     if (!x) {
-      x = new HavenHandler();
+      x = new HavenHandler() as any;
     }
 
-
-    const z = x;  // ughh, for TS compiler, and to create a constant..
+    const z = x as HavenHandler<T>;  // ughh, for TS compiler, and to create a constant..
 
     if (!z.opts) {
       z.opts = {
@@ -438,6 +439,11 @@ export const haven: Haven = (x?: HavenHandler) => {
         revealStackTraces: true,
         handleGlobalErrors: true,
       }
+    }
+
+    if(!hasRun && z.opts.handleGlobalErrors){
+      // register the global handlers only once
+      runOnce();
     }
 
     {
