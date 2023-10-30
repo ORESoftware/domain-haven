@@ -2,18 +2,9 @@
 
 import {HavenData} from "../../domain-haven.test";
 
-declare global {
-  namespace Express {
-    export interface Request {
-      havenData: HavenData;
-    }
-  }
-}
-
 import {ErrorRequestHandler} from "express";
 import * as express from 'express';
 import {haven, HavenHandler} from 'domain-haven';
-
 
 const app = express();
 

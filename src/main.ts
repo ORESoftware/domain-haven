@@ -44,7 +44,9 @@ const modVars = {
   ),
   overrideProd: process.env.DOMAIN_HAVEN_PROD_OVERRIDE === 'true',
   inProdMessage: '(In Production, Cannot Display Error Trace).',
-  noStackTracesMessage: '(Domain-Haven Flag Set to No Stack Traces, Cannot Display Error Trace).'
+  noStackTracesMessage: '(Domain-Haven Flag Set to No Stack Traces, Cannot Display Error Trace).',
+  havenId: 1,
+  havenMap: new Map<number, [HavenHandler<any>, Request, Response, any]>()
 };
 
 
@@ -300,6 +302,7 @@ const sendResponse = (res: Response, type: HavenErrorType, errorTrace: Inspected
 const runOnce = () => {
 
   if (modVars.hasRun) {
+    // we only want to register the global handlers once
     return;
   }
 
@@ -327,8 +330,8 @@ const runOnce = () => {
     d.removeAllListeners();
     d.exit();
 
-    const [z, req, res, opts] = (havenMap.get(d.havenId) || []);
-    havenMap.delete(d.havenId);
+    const [z, req, res, opts] = (modVars.havenMap.get(d.havenId) || []);
+    modVars.havenMap.delete(d.havenId);
 
     if (!(z && req && res && opts)) {
 
@@ -374,13 +377,17 @@ const runOnce = () => {
 
   process.on('unhandledRejection', (e, p?: HavenPromise) => {
 
-    let d: HavenDomain = <unknown>null as HavenDomain;
+    const getDomainFromSituation = (): HavenDomain | null => {
+      if (p && p.domain && p.domain.havenId) {
+        return p.domain;
+      } else if (process.domain && (<any>process.domain).havenId) {
+        return process.domain as HavenDomain;
+      } else {
+        return null;
+      }
+    };
 
-    if (p && p.domain && p.domain.havenId) {
-      d = p.domain;
-    } else if (process.domain && (<any>process.domain).havenId) {
-      d = process.domain as HavenDomain;
-    }
+    const d = getDomainFromSituation();
 
     if (!(d && d.havenId)) {
       // this is most likely some other unrelated unhandledRejection
@@ -397,8 +404,8 @@ const runOnce = () => {
     d.removeAllListeners();
     d.exit();
 
-    const [z, req, res, opts] = (havenMap.get(d.havenId) || []);
-    havenMap.delete(d.havenId);
+    const [z, req, res, opts] = (modVars.havenMap.get(d.havenId) || []);
+    modVars.havenMap.delete(d.havenId);
 
     if (!(z && req && res && opts)) {
       log.error('domain-haven sees an unhandledRejection, but cannot act:', e);
@@ -444,14 +451,12 @@ const runOnce = () => {
 
 }
 
-export const __havenPerfTestBenchmark =(v?: any) : RequestHandler => {
-    return (req,res,next )=> {
-      next();
-    }
+export const __havenPerfTestBenchmark = (v?: any): RequestHandler => {
+  return (req, res, next) => {
+    next();
+  }
 };
 
-let havenId = 1;
-const havenMap = new Map<number, [HavenHandler<any>, Request, Response, any]>();
 
 export const haven = <T extends HavenHandler<T>>(x?: T): RequestHandler => {
 
@@ -507,27 +512,35 @@ export const haven = <T extends HavenHandler<T>>(x?: T): RequestHandler => {
   return (req, res, next) => {
 
     const d = domain.create() as HavenDomain; // create a new domain for this request
-    const v = d.havenId = havenId++;
-    let opts = z.opts;
+    const v = d.havenId = modVars.havenId++;
 
-    if ((req as any).havenOpts && typeof (req as any).havenOpts === 'object') {
-      opts = Object.assign({}, opts, (req as any).havenOpts);
-    }
+    const hasParams = () => {
+      return (req as any).havenOpts && typeof (req as any).havenOpts === 'object';
+    };
 
-    havenMap.set(v, [z, req, res, opts]);
+    const opts = !hasParams() ? z.opts : Object.assign({}, z.opts, (req as any).havenOpts);
+    modVars.havenMap.set(v, [z, req, res, opts]);
+
+    let cleanedUp = false;
+
+    const cleanUpOnce = () => {
+      if (!cleanedUp) {
+        cleanedUp = true;
+        d.alreadyHandled = true;
+        modVars.havenMap.delete(v);
+        d.exit();
+        d.removeAllListeners();
+      }
+    };
 
     res.once('finish', () => {
-      havenMap.delete(v);
-      d.exit();
-      d.removeAllListeners();
+      cleanUpOnce();
     });
 
     d.once('error', e => {
 
       // just as a precaution
-      havenMap.delete(v);
-      d.exit();
-      d.removeAllListeners();
+      cleanUpOnce();
 
       const errorTrace = getErrorTrace(e, opts);
 
