@@ -1,33 +1,19 @@
 'use strict';
 
-import {HavenData} from "../../domain-haven.test";
 
-declare global {
-  namespace Express {
-    interface Request {
-      havenData: HavenData;
-    }
-  }
-}
-
-import {ErrorRequestHandler} from "express";
+import {ErrorRequestHandler, NextFunction, Request, Response} from "express";
 import * as express from 'express';
 import haven from 'domain-haven';
 
 const app = express();
-
-app.use(function (req: any, res, next) {
-  req.havenData = JSON.parse(req.query.haven || '{}');
-  next();
-});
 
 if (process.env.use_haven === 'yes') {
   console.log('using haven');
   app.use(haven());
 }
 
-app.use(function (req, res, next) {
-  res.json({success: true});
+app.use((req: Request, res: Response, next: NextFunction) => {
+  (res as any).json({success: true});
 });
 
 app.use(<ErrorRequestHandler>function (err, req, res, next) {

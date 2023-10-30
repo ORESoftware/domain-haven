@@ -19,7 +19,7 @@
       "es2021"
     ]
   },
-  "allowJs": true,
+  "allowJs": false,
   "compileOnSave": false,
   "include": [
     "src"

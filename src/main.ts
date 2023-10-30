@@ -444,6 +444,12 @@ const runOnce = () => {
 
 }
 
+export const __havenPerfTestBenchmark =(v?: any) : RequestHandler => {
+    return (req,res,next )=> {
+      next();
+    }
+};
+
 let havenId = 1;
 const havenMap = new Map<number, [HavenHandler<any>, Request, Response, any]>();
 

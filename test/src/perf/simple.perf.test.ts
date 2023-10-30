@@ -4,7 +4,9 @@ import request = require('request');
 import assert = require('assert');
 import util = require('util');
 
-const tasks = Array.apply(null, Array(5000)).map(function () {
+let count = 1;
+
+const tasks = Array.apply(null, Array(55000)).map(function () {
   return function (cb: Function) {
     
     const opts = {
@@ -17,6 +19,12 @@ const tasks = Array.apply(null, Array(5000)).map(function () {
       if (err) {
         return cb(err);
       }
+
+      count++;
+
+      if(count % 1000 === 0){
+        console.log('done so far:', count);
+      }
       
       cb(null);
     });
@@ -26,7 +34,7 @@ const tasks = Array.apply(null, Array(5000)).map(function () {
 
 const now = Date.now();
 
-async.parallelLimit(tasks, 15, function (err) {
+async.parallelLimit(tasks, 105, function (err) {
   if (err) throw err;
   console.log('passed in these millis:', Date.now() - now);
 });
