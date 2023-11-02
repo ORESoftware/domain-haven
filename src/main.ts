@@ -47,18 +47,22 @@ const modVars = {
   havenMap: new Map<number, [HavenHandler<any>, Request, Response, any]>()
 };
 
-
+// @ts-ignore
 const getErrorObject = function (e: any): Error {
 
   if (e && typeof e.stack === 'string' && typeof e.message === 'string') {
     return e;
   }
 
-  if (e && !(e instanceof Error)) {
+  if(e && e instanceof Error){
+    return e;
+  }
+
+  if (e) {
     return new Error(typeof e === 'string' ? e : util.inspect(e));
   }
 
-  return e || new Error('Unknown/falsy error, this is a dummy error.');
+  return new Error(`Unknown/falsy error, this is a dummy error. Original value/object was: "${util.inspect(e)}"`);
 };
 
 
@@ -357,6 +361,10 @@ export const haven = <T extends HavenHandler<T>>(x?: T): RequestHandler => {
 
     const d = new Domain(e => {
 
+      if(modVars.isProd && opts.auto){
+        log.error(getErrorObject(e).stack);
+      }
+
       // just as a precaution
       cleanUpOnce();
 
@@ -372,7 +380,7 @@ export const haven = <T extends HavenHandler<T>>(x?: T): RequestHandler => {
       } else {
         z.onPinnedError({
           message: 'Uncaught exception was pinned to a request/response pair.',
-          error: getErrorTrace(e, opts),
+          error: errorTrace,
           pinned: true,
           havenType: 'uncaughtException',
           domain: d || null
