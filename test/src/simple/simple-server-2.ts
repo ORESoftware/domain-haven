@@ -17,17 +17,19 @@ import {haven, HavenHandler} from 'domain-haven';
 
 const app = express();
 
-process.on('uncaughtException', function (e) {
-  console.error('we have uncaughtException', e);
-});
-
-process.on('unhandledRejection', function (e: any) {
-  console.error('we have unhandledRejection: ', e);
-});
+// process.on('uncaughtException', function (e) {
+//   console.error('we have uncaughtException', e);
+// });
+//
+// process.on('unhandledRejection', function (e: any) {
+//   console.error('we have unhandledRejection: ', e);
+// });
 
 let reqNum = 1;
 app.use((req,res,next) => {
-  console.log('server 2 request #', reqNum++, 'received');
+  if(process.env.is_perf_test !== 'true'){
+    console.log('server 2 request #', reqNum++, 'received');
+  }
   next();
 });
 
@@ -83,7 +85,9 @@ app.use(haven({
 }));
 
 app.use((req,res,next) => {
-  console.log('server 2 haven middleware passed.');
+  if(process.env.is_perf_test !== 'true'){
+    console.log('server 2 haven middleware passed.');
+  }
   next();
 });
 
