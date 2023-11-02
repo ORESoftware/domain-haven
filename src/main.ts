@@ -49,8 +49,8 @@ const modVars = {
   havenMap: new Map<number, [HavenHandler<any>, Request, Response, any]>()
 };
 
-
-const getErrorObject = function (e: any): Error {
+// @ts-ignore
+const _getErrorObject = function (e: any): Error {
 
   if (e && typeof e.stack === 'string' && typeof e.message === 'string') {
     return e;
@@ -312,8 +312,6 @@ const runOnce = () => {
 
     // const errorType = 'uncaughtException';
     const d = process.domain as HavenDomain;
-
-    log.error('error trapped by domain-haven package:', getErrorObject(e));
 
     if (!(d && d.havenId)) {
       // this is probably some unrelated uncaughtException
