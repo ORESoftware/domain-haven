@@ -25,9 +25,6 @@ export interface HavenDomain extends Domain {
   alreadyHandled: boolean,
 }
 
-interface HavenPromise extends Promise<any> {
-  domain?: HavenDomain,
-}
 
 const log = {
   info: console.log.bind(console, '[domain-haven package] INFO:'),
