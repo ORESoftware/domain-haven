@@ -7,8 +7,9 @@ import {RequestHandler, Response, Request} from 'express';
 import util = require('util');
 
 //npm
-import * as domain from "domain";
-import {Domain} from 'domain';
+// import * as domain from "domain";
+// import {Domain} from 'domain';
+import {Domain} from "async-hook-domain";
 import * as safe from '@oresoftware/safe-stringify'
 
 
@@ -311,7 +312,7 @@ const runOnce = () => {
   process.on('uncaughtException', e => {
 
     // const errorType = 'uncaughtException';
-    const d = process.domain as HavenDomain;
+    const d = (<unknown>process.domain as HavenDomain);
 
     log.error('error trapped by domain-haven package:', getErrorObject(e));
 
@@ -327,8 +328,9 @@ const runOnce = () => {
 
     d.alreadyHandled = true;
     // so this routine doesn't get called twice
-    d.removeAllListeners();
-    d.exit();
+    // d.removeAllListeners();
+    // d.exit();
+    d.destroy();
 
     const [z, req, res, opts] = (modVars.havenMap.get(d.havenId) || []);
     modVars.havenMap.delete(d.havenId);
@@ -381,7 +383,7 @@ const runOnce = () => {
       if (p && p.domain && p.domain.havenId) {
         return p.domain;
       } else if (process.domain && (<any>process.domain).havenId) {
-        return process.domain as HavenDomain;
+        return (<unknown>process.domain as HavenDomain);
       } else {
         return null;
       }
@@ -401,8 +403,9 @@ const runOnce = () => {
 
     // so this doesn't called twice
     d.alreadyHandled = true;
-    d.removeAllListeners();
-    d.exit();
+    // d.removeAllListeners();
+    // d.exit();
+    d.destroy();
 
     const [z, req, res, opts] = (modVars.havenMap.get(d.havenId) || []);
     modVars.havenMap.delete(d.havenId);
@@ -511,33 +514,9 @@ export const haven = <T extends HavenHandler<T>>(x?: T): RequestHandler => {
 
   return (req, res, next) => {
 
-    const d = domain.create() as HavenDomain; // create a new domain for this request
-    const v = d.havenId = modVars.havenId++;
+    // const d = domain.create() as HavenDomain; // create a new domain for this request
 
-    const hasParams = () => {
-      return (req as any).havenOpts && typeof (req as any).havenOpts === 'object';
-    };
-
-    const opts = !hasParams() ? z.opts : Object.assign({}, z.opts, (req as any).havenOpts);
-    modVars.havenMap.set(v, [z, req, res, opts]);
-
-    let cleanedUp = false;
-
-    const cleanUpOnce = () => {
-      if (!cleanedUp) {
-        cleanedUp = true;
-        d.alreadyHandled = true;
-        modVars.havenMap.delete(v);
-        d.exit();
-        d.removeAllListeners();
-      }
-    };
-
-    res.once('finish', () => {
-      cleanUpOnce();
-    });
-
-    d.once('error', e => {
+    const d = new Domain(e => {
 
       // just as a precaution
       cleanUpOnce();
@@ -560,11 +539,63 @@ export const haven = <T extends HavenHandler<T>>(x?: T): RequestHandler => {
           domain: d || null
         }, req, res);
       }
+    }) as HavenDomain;
 
+    const v = d.havenId = modVars.havenId++;
+
+    const hasParams = () => {
+      return (req as any).havenOpts && typeof (req as any).havenOpts === 'object';
+    };
+
+    const opts = !hasParams() ? z.opts : Object.assign({}, z.opts, (req as any).havenOpts);
+    modVars.havenMap.set(v, [z, req, res, opts]);
+
+    let cleanedUp = false;
+
+    const cleanUpOnce = () => {
+      if (!cleanedUp) {
+        cleanedUp = true;
+        d.alreadyHandled = true;
+        modVars.havenMap.delete(v);
+        d.destroy();
+        // d.exit();
+        // d.removeAllListeners();
+      }
+    };
+
+    res.once('finish', () => {
+      cleanUpOnce();
     });
 
+    // d.once('error', e => {
+    //
+    //   // just as a precaution
+    //   cleanUpOnce();
+    //
+    //   const errorTrace = getErrorTrace(e, opts);
+    //
+    //   if (opts.auto || typeof z.onPinnedError !== 'function') {
+    //     sendResponse(res, 'error', errorTrace);
+    //     return;
+    //   }
+    //
+    //   if (typeof z.onPinnedError !== 'function') {
+    //     sendResponse(res, 'error', errorTrace);
+    //   } else {
+    //     z.onPinnedError({
+    //       message: 'Uncaught exception was pinned to a request/response pair.',
+    //       error: getErrorTrace(e, opts),
+    //       pinned: true,
+    //       havenType: 'uncaughtException',
+    //       domain: d || null
+    //     }, req, res);
+    //   }
+    //
+    // });
+
     // we invoke the next middleware
-    d.run(next);
+    // d.run(next);
+    next();
 
   }
 

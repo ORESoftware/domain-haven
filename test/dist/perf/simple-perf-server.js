@@ -1,18 +1,56 @@
 'use strict';
 Object.defineProperty(exports, "__esModule", { value: true });
 const express = require("express");
-const domain_haven_1 = require("domain-haven");
+let haven = null;
+if (process.env.use_haven === 'yes') {
+    haven = require('domain-haven');
+}
+const ahDomain = require("async-hook-domain");
 const app = express();
-app.use(function (req, res, next) {
-    req.havenData = JSON.parse(req.query.haven || '{}');
-    next();
-});
 if (process.env.use_haven === 'yes') {
     console.log('using haven');
-    app.use((0, domain_haven_1.default)());
+    app.use(haven.middleware());
 }
-app.use(function (req, res, next) {
-    res.json({ success: true });
+if (process.env.use_haven === 'ahd') {
+    app.use((req, res, next) => {
+        const d = new ahDomain.Domain(err => {
+            d.destroy();
+            res.json({ ahd: true });
+        });
+        next();
+    });
+}
+app.use((req, res, next) => {
+    const r = Math.random();
+    if (r < 0.2) {
+        return (async () => {
+            throw new Error('a');
+        })();
+    }
+    if (r < 0.4) {
+        return (async () => {
+            return (async () => {
+                throw new Error('b');
+            })();
+        })();
+    }
+    if (r < 0.6) {
+        return (async () => {
+            Promise.resolve(null).then(v => {
+                Promise.reject('c');
+            });
+        })();
+    }
+    if (r < 0.8) {
+        return (async () => {
+            setTimeout(() => {
+                throw new Error('d');
+            }, 10);
+        })();
+    }
+    setTimeout(async () => {
+        throw new Error('d');
+    }, 10);
 });
 app.use(function (err, req, res, next) {
     err && console.error(err.message || err);

@@ -5,12 +5,6 @@ const express = require("express");
 const domain_haven_1 = require("domain-haven");
 const app = express();
 exports.app = app;
-process.on('uncaughtException', function (e) {
-    console.error('we have uncaughtException', e);
-});
-process.on('unhandledRejection', function (e) {
-    console.error('we have unhandledRejection: ', e);
-});
 let reqNum = 1;
 app.use((req, res, next) => {
     console.log('server 1 request #', reqNum++, 'received');

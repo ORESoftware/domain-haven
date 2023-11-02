@@ -41,6 +41,7 @@
     "test": "echo 'no-op'"
   },
   "dependencies": {
-    "@oresoftware/safe-stringify": "^0.0.111"
+    "@oresoftware/safe-stringify": "^0.0.111",
+    "async-hook-domain": "^4.0.1"
   }
 }

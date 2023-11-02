@@ -8,13 +8,13 @@ import {haven, HavenHandler} from 'domain-haven';
 
 const app = express();
 
-process.on('uncaughtException', function (e) {
-  console.error('we have uncaughtException', e);
-});
-
-process.on('unhandledRejection', function (e: any) {
-  console.error('we have unhandledRejection: ', e);
-});
+// process.on('uncaughtException', function (e) {
+//   console.error('we have uncaughtException', e);
+// });
+//
+// process.on('unhandledRejection', function (e: any) {
+//   console.error('we have unhandledRejection: ', e);
+// });
 
 let reqNum = 1;
 app.use((req,res,next) => {
