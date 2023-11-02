@@ -9,6 +9,9 @@ node_modules
 .vscode
 dist/*
 
+test/dist/*
+
 ### negation
 !dist/readme.md
+!test/dist/readme.md
 

@@ -62,7 +62,9 @@ var tasks = Array.apply(null, Array(19000)).map(function (n, x) {
       catch (err) {
         return cb(err);
       }
-      console.log('done with number', x);
+      if(x % 100  === 0){
+        console.log('done with number', x);
+      }
       cb(null);
     });
   };

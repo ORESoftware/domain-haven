@@ -27,7 +27,9 @@ const app = express();
 
 let reqNum = 1;
 app.use((req,res,next) => {
-  console.log('server 1 request #', reqNum++, 'received');
+  if(process.env.is_perf_test !== 'true'){
+    console.log('server 1 request #', reqNum++, 'received');
+  }
   next();
 });
 
@@ -54,7 +56,9 @@ app.use(haven(new HavenHandler({
 
 
 app.use((req,res,next) => {
-  console.log('server 1 haven middleware passed.');
+  if(process.env.is_perf_test !== 'true'){
+    console.log('server 1 haven middleware passed.');
+  }
   next();
 });
 
