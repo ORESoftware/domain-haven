@@ -101,7 +101,9 @@ const tasks = Array.apply(null, Array(59000)).map(function (n: any, x: number) {
   }
 });
 
+const now = Date.now();
+
 async.parallelLimit(tasks, 200, function (err) {
   if (err) throw err;
-  console.log('passed.');
+  console.log('passed in:', Date.now() - now);
 });
