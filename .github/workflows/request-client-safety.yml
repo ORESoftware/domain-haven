@@ -1,0 +1,68 @@
+name: Test-only HTTP client security admission
+
+on:
+  pull_request:
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - 'test/**'
+      - '.r2g/fixtures/simple-test.js'
+      - '.github/workflows/request-client-safety.yml'
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dependency-and-client:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out exact revision without saved credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+      - name: Prove exact source head was checked out
+        env:
+          EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        shell: bash
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_HEAD_SHA"
+      - name: Pin Node.js runtime
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Execute loopback HTTP client regression tests
+        run: node --test test/request-client.test.js
+      - name: Reject legacy request packages and manifest drift
+        run: |
+          node <<'NODE'
+          const assert = require('node:assert/strict');
+          const fs = require('node:fs');
+          const manifest = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+          assert.deepEqual(lock.packages[''].dependencies, manifest.dependencies);
+          assert.deepEqual(lock.packages[''].devDependencies, manifest.devDependencies);
+          for (const name of ['request', '@types/request']) {
+            assert.equal(Object.hasOwn(manifest.devDependencies, name), false, name + ' must not be a direct dev dependency');
+          }
+          for (const path of Object.keys(lock.packages)) {
+            assert.equal(/(^|\/)node_modules\/(request|@types\/request)(\/|$)/.test(path), false, path);
+          }
+          for (const path of ['test/src/simple/simple.test.ts', 'test/src/perf/simple.perf.test.ts', '.r2g/fixtures/simple-test.js']) {
+            const contents = fs.readFileSync(path, 'utf8');
+            assert.equal(/require\(['"]request['"]\)/.test(contents), false, path + ' still uses request');
+          }
+          NODE
+      - name: Install exact locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Reject moderate-or-higher advisories across production and test dependencies
+        run: npm audit --audit-level=moderate
+      - name: Ensure lockfile unchanged after install
+        if: always()
+        run: git diff --exit-code -- package.json package-lock.json
