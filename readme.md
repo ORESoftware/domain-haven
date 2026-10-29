@@ -4,7 +4,7 @@
 
 ### Compatibility and security caveat
 
-Node.js 22 TypeScript compilation and focused error-lifecycle/trace-policy regression tests run in CI. This is not a claim of complete Node.js 22 or production compatibility; full HTTP integration, packaging, and supported-version coverage remain outstanding. Node.js domains are a legacy API.
+CI verifies Node.js **22, 24 and 26** on Ubuntu 24.04: locked TypeScript compilation, 23 executable runtime/security regressions including real Express loopback HTTP and fatal child-process tests, production dependency audit, and a separately installed npm tarball consumer. This is evidence for those tested environments, **not** a guarantee of full production compatibility, Windows/macOS behavior, supervisor integration or npm registry publication. Node.js domains are a legacy API.
 
 ## About
 
