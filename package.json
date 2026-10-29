@@ -35,10 +35,8 @@
     "@types/async": "^2.0.48",
     "@types/express": "^4.11.1",
     "@types/node": "^8.10.0",
-    "@types/request": "^2.47.0",
     "async": "^2.6.0",
-    "express": "^4.22.2",
-    "request": "^2.85.0",
+    "express": "^4.22.3",
     "typescript": "5.8.3"
   },
   "r2g": {
