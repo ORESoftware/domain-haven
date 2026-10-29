@@ -1,0 +1,46 @@
+name: Domain error-response lifecycle regression
+
+on:
+  pull_request:
+    paths:
+      - 'src/main.ts'
+      - 'test/runtime-lifecycle.test.js'
+      - '.github/workflows/runtime-lifecycle.yml'
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lifecycle:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out exact immutable PR head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+      - name: Verify exact source head identity
+        env:
+          EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Use Node.js 22
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Install locked application dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install a fixed test-only TypeScript compiler without updating lockfile
+        run: npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund typescript@5.8.3
+      - name: Typecheck and compile actual runtime source
+        run: ./node_modules/.bin/tsc --project tsconfig.json
+      - name: Run executable domain lifecycle regression suite
+        run: node --test test/runtime-lifecycle.test.js
+      - name: Preserve committed manifest and lockfile
+        if: always()
+        run: git diff --exit-code -- package.json package-lock.json
