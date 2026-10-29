@@ -61,7 +61,7 @@ jobs:
           NODE
       - name: Install exact locked dependencies without lifecycle scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Reject high-severity production dependency advisories
-        run: npm audit --omit=dev --audit-level=high
+      - name: Reject high-severity advisories across production and test dependencies
+        run: npm audit --audit-level=high
       - name: Ensure lockfile unchanged after install
         run: git diff --exit-code -- package.json package-lock.json
