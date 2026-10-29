@@ -44,6 +44,8 @@ jobs:
           package-manager-cache: false
       - name: Install locked application dependencies without lifecycle scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Reject production dependency advisories at moderate severity or higher
+        run: npm audit --omit=dev --audit-level=moderate
       - name: Verify locked compiler and build actual source
         shell: bash
         run: |
@@ -54,6 +56,9 @@ jobs:
       - name: Prove npm package would contain compiled runtime and type declaration
         shell: bash
         run: |
+          # Force prepack to build from a clean output directory rather than
+          # accidentally accepting artifacts left by a preceding test run.
+          rm -rf dist
           npm pack --dry-run --json > "$RUNNER_TEMP/domain-haven-pack.json"
           node <<'NODE'
           const assert = require('node:assert/strict');
@@ -68,6 +73,7 @@ jobs:
       - name: Create actual npm archive and install in separate production consumer
         shell: bash
         run: |
+          rm -rf dist
           npm pack --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/domain-haven-tarball.json"
           archive="$(node -e "const p=require(process.env.RUNNER_TEMP+'/domain-haven-tarball.json'); if(p.length!==1||!/^domain-haven-.*\.tgz$/.test(p[0].filename)) process.exit(1); process.stdout.write(p[0].filename)")"
           npm install --prefix "$RUNNER_TEMP/domain-haven-consumer" --omit=dev --ignore-scripts --no-audit --no-fund "$RUNNER_TEMP/$archive"
