@@ -45,7 +45,7 @@ jobs:
       - name: Install locked application dependencies without lifecycle scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Reject production dependency advisories at moderate severity or higher
-        run: npm audit --omit=dev --audit-level=moderate
+        run: npm audit --audit-level=moderate
       - name: Verify locked compiler and build actual source
         shell: bash
         run: |
