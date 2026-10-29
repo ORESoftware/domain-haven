@@ -293,12 +293,16 @@ const runOnce = () => {
     const d = process.domain as HavenDomain;
 
     if (!(d && d.havenId)) {
-      // this is probably some unrelated uncaughtException
-      log.error('domain-haven sees an uncaughtException, but cannot act:', e);
+      // Installing an uncaughtException listener suppresses Node's default
+      // fatal behavior. Never continue running after an unowned crash.
+      log.error('Unpinned uncaughtException: terminating the process.');
+      process.exit(1);
       return;
     }
 
     if (d.alreadyHandled) {
+      log.error('Uncaught exception on an already-handled domain: terminating the process.');
+      process.exit(1);
       return;
     }
 
@@ -311,23 +315,22 @@ const runOnce = () => {
     modVars.havenMap.delete(d.havenId);
 
     if (!(z && req && res && opts)) {
-
-      log.error('domain-haven sees an uncaughtException, but cannot act:', e);
-
-      if (z && typeof z.onUnpinnedUncaughtException === 'function') {
-        z.onUnpinnedUncaughtException({
-          message: 'Uncaught exception could NOT be pinned to a request/response pair.',
-          error: getErrorTrace(e, opts),
-          pinned: false,
-          havenType: 'uncaughtException',
-          domain: d
-        });
-      } else {
-        log.error('Uncaught exception could NOT be pinned to a request/response:', util.inspect(e));
-        log.error('It is possible that the response has finished writing before the error occurs.');
-        log.error('To remove these logs, add an "onUnpinnedUncaughtException" handler.');
+      // A callback is permitted to observe the failure, not to recover from it.
+      // The finally block also covers callbacks that throw synchronously.
+      try {
+        log.error('Unpinned uncaughtException: terminating the process.');
+        if (z && typeof z.onUnpinnedUncaughtException === 'function') {
+          z.onUnpinnedUncaughtException({
+            message: 'Uncaught exception could NOT be pinned to a request/response pair.',
+            error: getErrorTrace(e, opts),
+            pinned: false,
+            havenType: 'uncaughtException',
+            domain: d
+          });
+        }
+      } finally {
+        process.exit(1);
       }
-
       return;
     }
 
