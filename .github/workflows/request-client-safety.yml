@@ -63,5 +63,23 @@ jobs:
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Reject high-severity advisories across production and test dependencies
         run: npm audit --audit-level=high
+      - name: Diagnose exact registry-generated lock repair if security audit fails
+        if: failure()
+        run: |
+          npm audit fix --package-lock-only --ignore-scripts --no-fund || true
+          node <<'NODE'
+          const cp = require('node:child_process');
+          const fs = require('node:fs');
+          const before = JSON.parse(cp.execFileSync('git', ['show', 'HEAD:package-lock.json'], { encoding: 'utf8' }));
+          const after = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+          const change = { removed: [], changed: {}, rootChanged: JSON.stringify(before.packages['']) !== JSON.stringify(after.packages['']) };
+          for (const [name, value] of Object.entries(after.packages)) {
+            if (JSON.stringify(value) !== JSON.stringify(before.packages[name])) change.changed[name] = value;
+          }
+          for (const name of Object.keys(before.packages)) {
+            if (!Object.hasOwn(after.packages, name)) change.removed.push(name);
+          }
+          console.log('REGISTRY_LOCK_REPAIR=', JSON.stringify(change));
+          NODE
       - name: Ensure lockfile unchanged after install
         run: git diff --exit-code -- package.json package-lock.json
