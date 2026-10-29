@@ -45,7 +45,7 @@ In production (`NODE_ENV=production`, `NODE_ENV=prod`, or `DOMAIN_HAVEN_PROD=tru
 
 If an error is pinned to an active request, Domain-Haven attempts to send a redacted JSON error response only while the response is writable. Errors after headers are committed or after a disconnect do not trigger a second HTTP response.
 
-**Important unresolved issue:** the current global `uncaughtException` listener may log an unpinned exception and return without exiting; it must not be treated as crash-recovery or proof the process is safe to continue serving requests. See the open runtime hardening issue before relying on global error handling in production.
+**Global exception policy:** when Domain-Haven's global uncaught-exception listener is enabled, an uncaught exception without an active request, or from an already-handled domain, terminates the Node.js process with a nonzero exit code. An uncaught exception is not safe to recover from merely because it was logged. A service supervisor must handle process restart and traffic draining. Pinned request errors retain their existing response behavior. This policy does not make Node.js domains a substitute for process isolation, and the `unhandledRejection` policy remains a separate concern.
 
 _______________________________________________
 
