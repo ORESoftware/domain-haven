@@ -107,7 +107,7 @@ export class HavenHandler<T extends IHavenHandler> implements IHavenHandler {
   opts: HavenOptions = {
     auto: true,
     handleGlobalErrors: true,
-    revealStackTraces: true,
+    revealStackTraces: false,
     overrideProd: false
   }
 
@@ -222,27 +222,18 @@ const getErrorTrace = function (e: any, opts: HavenOptions = {}): InspectedError
 
   opts = opts || {};
 
-  if (!modVars.overrideProd && !opts.overrideProd) {
+  // Debug traces require both a server-wide opt-in and an explicit production
+  // environment override. Request-provided options cannot grant disclosure.
+  const traceAllowed = opts.revealStackTraces === true &&
+    (!modVars.isProd || modVars.overrideProd);
 
-    if (modVars.isProd) {
-      return {
-        originalErrorObj: null,
-        errorAsString: modVars.inProdMessage,
-        errorObjParsed: {
-          message: modVars.inProdMessage
-        }
-      };
-    }
-
-    if (opts && opts.revealStackTraces === false) {
-      return {
-        originalErrorObj: null,
-        errorAsString: modVars.noStackTracesMessage,
-        errorObjParsed: {
-          message: modVars.noStackTracesMessage
-        }
-      };
-    }
+  if (!traceAllowed) {
+    const message = modVars.isProd ? modVars.inProdMessage : modVars.noStackTracesMessage;
+    return {
+      originalErrorObj: null,
+      errorAsString: message,
+      errorObjParsed: { message }
+    };
   }
 
   return {
@@ -455,7 +446,7 @@ export const haven = <T extends HavenHandler<T>>(x?: T): RequestHandler => {
   if (!z.opts) {
     z.opts = {
       auto: true,
-      revealStackTraces: true,
+      revealStackTraces: false,
       handleGlobalErrors: true,
     }
   }
@@ -504,7 +495,11 @@ export const haven = <T extends HavenHandler<T>>(x?: T): RequestHandler => {
       return (req as any).havenOpts && typeof (req as any).havenOpts === 'object';
     };
 
-    const opts = !hasParams() ? z.opts : Object.assign({}, z.opts, (req as any).havenOpts);
+    const opts = !hasParams() ? Object.assign({}, z.opts) :
+      Object.assign({}, z.opts, (req as any).havenOpts);
+    // Request overrides can narrow logging but cannot elevate debug visibility.
+    opts.revealStackTraces = z.opts.revealStackTraces === true && opts.revealStackTraces === true;
+    opts.overrideProd = false;
     modVars.havenMap.set(v, [z, req, res, opts]);
 
     let cleanedUp = false;
