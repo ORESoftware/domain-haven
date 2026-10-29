@@ -4,11 +4,15 @@ on:
   pull_request:
     paths:
       - 'src/main.ts'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig.json'
       - 'test/runtime-lifecycle.test.js'
       - 'test/runtime-trace-policy.test.js'
       - 'test/runtime-fatal-boundary.test.js'
       - 'test/runtime-http-integration.test.js'
       - 'test/runtime-rejection-boundary.test.js'
+      - 'test/packed-consumer-smoke.js'
       - 'readme.md'
       - '.github/workflows/runtime-lifecycle.yml'
   push:
@@ -40,18 +44,21 @@ jobs:
           package-manager-cache: false
       - name: Install locked application dependencies without lifecycle scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Install fixed test-only TypeScript in isolated runner temp prefix
+      - name: Reject production and development dependency advisories at moderate severity or higher
+        run: npm audit --audit-level=moderate
+      - name: Verify locked compiler and build actual source
         shell: bash
         run: |
-          npm install --prefix "$RUNNER_TEMP/domain-haven-tsc" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund typescript@5.8.3
-      - name: Typecheck and compile actual runtime source against locked application dependencies
-        shell: bash
-        run: '"$RUNNER_TEMP/domain-haven-tsc/node_modules/.bin/tsc" --project tsconfig.json'
-      - name: Execute HTTP, lifecycle, trace, fatal exception and rejection regressions
-        run: node --test test/runtime-lifecycle.test.js test/runtime-trace-policy.test.js test/runtime-fatal-boundary.test.js test/runtime-http-integration.test.js test/runtime-rejection-boundary.test.js
+          node -e "const a=require('./package.json');const l=require('./package-lock.json');const ts=require('./node_modules/typescript/package.json');if(a.devDependencies.typescript!=='5.8.3'||l.packages['node_modules/typescript'].version!=='5.8.3'||ts.version!=='5.8.3') process.exit(1)"
+          npm run build
+      - name: Run canonical npm test script including pretest build
+        run: npm test
       - name: Prove npm package would contain compiled runtime and type declaration
         shell: bash
         run: |
+          # Force prepack to build from a clean output directory rather than
+          # accidentally accepting artifacts left by a preceding test run.
+          rm -rf dist
           npm pack --dry-run --json > "$RUNNER_TEMP/domain-haven-pack.json"
           node <<'NODE'
           const assert = require('node:assert/strict');
@@ -63,6 +70,14 @@ jobs:
             assert.ok(entries.has(artifact), 'npm pack would omit required published artifact: ' + artifact);
           }
           NODE
+      - name: Create actual npm archive and install in separate production consumer
+        shell: bash
+        run: |
+          rm -rf dist
+          npm pack --json --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/domain-haven-tarball.json"
+          archive="$(node -e "const p=require(process.env.RUNNER_TEMP+'/domain-haven-tarball.json'); if(p.length!==1||!/^domain-haven-.*\.tgz$/.test(p[0].filename)) process.exit(1); process.stdout.write(p[0].filename)")"
+          npm install --prefix "$RUNNER_TEMP/domain-haven-consumer" --omit=dev --ignore-scripts --no-audit --no-fund "$RUNNER_TEMP/$archive"
+          node test/packed-consumer-smoke.js "$RUNNER_TEMP/domain-haven-consumer/node_modules/domain-haven"
       - name: Preserve committed manifest and lockfile
         if: always()
         run: git diff --exit-code -- package.json package-lock.json
