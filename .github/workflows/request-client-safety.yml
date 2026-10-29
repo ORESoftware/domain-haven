@@ -61,27 +61,8 @@ jobs:
           NODE
       - name: Install exact locked dependencies without lifecycle scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Reject high-severity advisories across production and test dependencies
-        run: npm audit --audit-level=high
-      - name: Diagnose exact registry-generated lock repair if security audit fails
-        if: failure()
-        run: |
-          npm install --package-lock-only --ignore-scripts --no-fund --save-dev 'express@^4.22.3' || true
-          npm audit --audit-level=moderate || true
-          node <<'NODE'
-          const cp = require('node:child_process');
-          const fs = require('node:fs');
-          const before = JSON.parse(cp.execFileSync('git', ['show', 'HEAD:package-lock.json'], { encoding: 'utf8' }));
-          const after = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
-          const change = { removed: [], changed: {}, rootChanged: JSON.stringify(before.packages['']) !== JSON.stringify(after.packages['']) };
-          for (const [name, value] of Object.entries(after.packages)) {
-            if (JSON.stringify(value) !== JSON.stringify(before.packages[name])) change.changed[name] = value;
-          }
-          for (const name of Object.keys(before.packages)) {
-            if (!Object.hasOwn(after.packages, name)) change.removed.push(name);
-          }
-          change.manifest = JSON.parse(fs.readFileSync('package.json', 'utf8'));
-          console.log('REGISTRY_LOCK_REPAIR=', JSON.stringify(change));
-          NODE
+      - name: Reject moderate-or-higher advisories across production and test dependencies
+        run: npm audit --audit-level=moderate
       - name: Ensure lockfile unchanged after install
+        if: always()
         run: git diff --exit-code -- package.json package-lock.json
