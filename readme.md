@@ -2,9 +2,9 @@
 
 # Domain-Haven
 
-### Caveat
+### Compatibility and security caveat
 
-Works on Node.js version before 12. Currently not working on Node.js version 12.
+Node.js 22 TypeScript compilation and focused error-lifecycle/trace-policy regression tests run in CI. This is not a claim of complete Node.js 22 or production compatibility; full HTTP integration, packaging, and supported-version coverage remain outstanding. Node.js domains are a legacy API.
 
 ## About
 
@@ -23,67 +23,29 @@ export {app};
 
 ```
 
-### In Production
+### Error disclosure policy
 
-```bash
-### use these env vars to switch off stack-traces from leaking sensitive data to client(s):
+**Stack traces and original errors are redacted by default** for all environments. This applies to `haven()` and to handlers without an explicit disclosure policy.
 
-export NODE_ENV=prod
-export NODE_ENV=production
-export DOMAIN_HAVEN_PROD=true
-
-```
-
-alternatively, use this option to not reveal stack-traces programmatically:
-
+For local **development only**, the server may intentionally opt in to debug traces:
 
 ```typescript
+import {haven, HavenHandler} from 'domain-haven';
 
-import * as haven from 'domain-haven';
-
-haven.middleware({
-  opts: {
-    revealStackTraces: false
-  }
-});
-
-// where the above is equivalent to:
-
-import haven from 'domain-haven';
-
-haven({
-  opts: {
-    revealStackTraces: false
-  }
-});
-
-
-
+app.use(haven(new HavenHandler({
+  opts: {revealStackTraces: true}
+})));
 ```
-### In Production, continued:
 
-In some rare cases, we may wish to enable stack traces shown to the client for a particular request.
-You can override behavior for a particular request by doing this:
+In production (`NODE_ENV=production`, `NODE_ENV=prod`, or `DOMAIN_HAVEN_PROD=true`), debug traces remain redacted even with `revealStackTraces: true` unless a trusted operator **also** sets the server environment variable `DOMAIN_HAVEN_PROD_OVERRIDE=true`. Do not enable this override in public-facing deployments.
 
-
-```typescript
-
-app.use((req,res,next) => {
-  if(req.query.secret === 'magic-spell'){  // you control this, serverside
-    req.havenOpts = {revealStackTraces: true, overrideProd: true};
-  }
-  next()
-});
-
-```
+**Request-derived data cannot enable debug traces.** `req.havenOpts.revealStackTraces` may narrow an existing server opt-in, but it cannot elevate a redacted server policy. `req.havenOpts.overrideProd`, including values populated from URL/query parameters, never authorizes production disclosure. The legacy `overrideProd` option remains in the TypeScript interface for compatibility but is not an authorization mechanism.
 
 # Behavior
 
-By default, if an `uncaughtException` or `unhandledRejection` occurs and a request/response pair can be 
-<br>
-pinned to the event, a JSON error response will be sent.  If the event cannot be pinned to
-<br>
-to a particular request/response, Haven will shutdown the process.
+If an error is pinned to an active request, Domain-Haven attempts to send a redacted JSON error response only while the response is writable. Errors after headers are committed or after a disconnect do not trigger a second HTTP response.
+
+**Important unresolved issue:** the current global `uncaughtException` listener may log an unpinned exception and return without exiting; it must not be treated as crash-recovery or proof the process is safe to continue serving requests. See the open runtime hardening issue before relying on global error handling in production.
 
 _______________________________________________
 
@@ -108,13 +70,13 @@ TBD
 ### If you just want to capture errors that don't make it to the global scope, use:
 
 ```js
-app.use(haven({handleGlobalErrors: false}));
+app.use(haven(new HavenHandler({opts:{handleGlobalErrors: false}})));
 ```
 
 ### To just show error messages, but not the full stack trace, use:
 
 ```js
-app.use(haven({showStackTracesInResponse: false}));
+app.use(haven(new HavenHandler({opts:{revealStackTraces: false}})));
 ```
 
 
@@ -133,7 +95,9 @@ const havenMiddleware = function (req, res, next) {
     });
     
     d.once('error',  (e) => {
-        res.status(500).json({error: e});
+        if (!res.headersSent && !res.writableEnded && !res.destroyed) {
+          res.status(500).json({error: 'Internal Server Error'});
+        }
     });
     
     d.run(next);  // we invoke the next middleware
