@@ -47,10 +47,10 @@ test('an uncaught exception in a domain without an active request terminates', (
     const d = require('node:domain').create();
     d.havenId = 987654321;
     d.run(() => {
-      // Native process.emit clears process.domain before invoking callbacks.
-      // Invoke the real registered listener directly to exercise the orphan-domain branch;
+      // Node installs a domain-clearing listener before the library listener.
+      // Invoke the library's final registered listener to exercise the orphan-domain branch;
       // the separate async-throw case above validates genuine Node event dispatch.
-      process.listeners('uncaughtException')[0](new Error('${secret}'));
+      process.listeners('uncaughtException').at(-1)(new Error('${secret}'));
       process.stdout.write('UNSAFE_SURVIVAL');
     });
   `);
@@ -67,7 +67,7 @@ test('an already-handled domain cannot suppress a second uncaught exception', ()
       // Native process.emit clears process.domain before invoking callbacks.
       // Invoke the real registered listener directly to exercise the orphan-domain branch;
       // the separate async-throw case above validates genuine Node event dispatch.
-      process.listeners('uncaughtException')[0](new Error('${secret}'));
+      process.listeners('uncaughtException').at(-1)(new Error('${secret}'));
       process.stdout.write('UNSAFE_SURVIVAL');
     });
   `);
