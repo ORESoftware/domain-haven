@@ -6,6 +6,7 @@ on:
       - 'src/main.ts'
       - 'test/runtime-lifecycle.test.js'
       - 'test/runtime-trace-policy.test.js'
+      - 'readme.md'
       - '.github/workflows/runtime-lifecycle.yml'
   push:
     branches: [master]
