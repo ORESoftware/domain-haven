@@ -370,12 +370,16 @@ const runOnce = () => {
     const d = getDomainFromSituation();
 
     if (!(d && d.havenId)) {
-      // this is most likely some other unrelated unhandledRejection
-      log.error('domain-haven sees an unhandledRejection, but cannot act:', e);
+      // Registering an unhandledRejection listener suppresses Node's default
+      // fatal behavior in --unhandled-rejections=throw mode.
+      log.error('Unpinned unhandledRejection: terminating the process.');
+      process.exit(1);
       return;
     }
 
     if (d.alreadyHandled) {
+      log.error('Unhandled rejection on an already-handled domain: terminating the process.');
+      process.exit(1);
       return;
     }
 
@@ -388,21 +392,22 @@ const runOnce = () => {
     modVars.havenMap.delete(d.havenId);
 
     if (!(z && req && res && opts)) {
-      log.error('domain-haven sees an unhandledRejection, but cannot act:', e);
-
-      if (z && typeof z.onUnpinnedUnhandledRejection === 'function') {
-        z.onUnpinnedUnhandledRejection({
-          message: 'Unhandled rejection could NOT be pinned to a request/response.',
-          error: getErrorTrace(e, opts),
-          pinned: false,
-          havenType: 'unhandledRejection',
-          promise: <any>p || null,
-          domain: d || null
-        });
-      } else {
-        log.error('Unhandled rejection could NOT be pinned to a request/response:', util.inspect(e));
-        log.error('It is possible that the response has finished writing before the error occurs.');
-        log.error('To remove these logs, add an "onUnpinnedUnhandledRejection" handler.');
+      // Observation hooks do not grant permission to recover a crashed
+      // request-less process. A throwing hook must not defeat termination.
+      try {
+        log.error('Unpinned unhandledRejection: terminating the process.');
+        if (z && typeof z.onUnpinnedUnhandledRejection === 'function') {
+          z.onUnpinnedUnhandledRejection({
+            message: 'Unhandled rejection could NOT be pinned to a request/response.',
+            error: getErrorTrace(e, opts),
+            pinned: false,
+            havenType: 'unhandledRejection',
+            promise: <any>p || null,
+            domain: d || null
+          });
+        }
+      } finally {
+        process.exit(1);
       }
       return;
     }
