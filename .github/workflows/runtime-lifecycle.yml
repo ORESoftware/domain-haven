@@ -8,6 +8,7 @@ on:
       - 'test/runtime-trace-policy.test.js'
       - 'test/runtime-fatal-boundary.test.js'
       - 'test/runtime-http-integration.test.js'
+      - 'test/runtime-rejection-boundary.test.js'
       - 'readme.md'
       - '.github/workflows/runtime-lifecycle.yml'
   push:
@@ -46,8 +47,8 @@ jobs:
       - name: Typecheck and compile actual runtime source against locked application dependencies
         shell: bash
         run: '"$RUNNER_TEMP/domain-haven-tsc/node_modules/.bin/tsc" --project tsconfig.json'
-      - name: Execute lifecycle, trace, fatal-boundary and real HTTP integration regressions
-        run: node --test test/runtime-lifecycle.test.js test/runtime-trace-policy.test.js test/runtime-fatal-boundary.test.js test/runtime-http-integration.test.js
+      - name: Execute HTTP, lifecycle, trace, fatal exception and rejection regressions
+        run: node --test test/runtime-lifecycle.test.js test/runtime-trace-policy.test.js test/runtime-fatal-boundary.test.js test/runtime-http-integration.test.js test/runtime-rejection-boundary.test.js
       - name: Prove npm package would contain compiled runtime and type declaration
         shell: bash
         run: |
