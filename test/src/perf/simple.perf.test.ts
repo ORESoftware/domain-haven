@@ -1,6 +1,6 @@
 import http = require('http');
 import async = require('async');
-import request = require('request');
+import request = require('../../request-client');
 import assert = require('assert');
 import util = require('util');
 
