@@ -66,7 +66,8 @@ jobs:
       - name: Diagnose exact registry-generated lock repair if security audit fails
         if: failure()
         run: |
-          npm audit fix --package-lock-only --ignore-scripts --no-fund || true
+          npm install --package-lock-only --ignore-scripts --no-fund --save-dev 'express@^4.22.3' || true
+          npm audit --audit-level=moderate || true
           node <<'NODE'
           const cp = require('node:child_process');
           const fs = require('node:fs');
@@ -79,6 +80,7 @@ jobs:
           for (const name of Object.keys(before.packages)) {
             if (!Object.hasOwn(after.packages, name)) change.removed.push(name);
           }
+          change.manifest = JSON.parse(fs.readFileSync('package.json', 'utf8'));
           console.log('REGISTRY_LOCK_REPAIR=', JSON.stringify(change));
           NODE
       - name: Ensure lockfile unchanged after install
