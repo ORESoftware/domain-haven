@@ -6,7 +6,10 @@
   "types": "dist/main.d.ts",
   "typings": "dist/main.d.ts",
   "scripts": {
-    "test": "suman test"
+    "build": "tsc --project tsconfig.json",
+    "prepack": "npm run build",
+    "pretest": "npm run build",
+    "test": "node --test test/runtime-lifecycle.test.js test/runtime-trace-policy.test.js test/runtime-fatal-boundary.test.js test/runtime-http-integration.test.js test/runtime-rejection-boundary.test.js"
   },
   "repository": {
     "type": "git",
@@ -35,7 +38,8 @@
     "@types/request": "^2.47.0",
     "async": "^2.6.0",
     "express": "^4.22.2",
-    "request": "^2.85.0"
+    "request": "^2.85.0",
+    "typescript": "5.8.3"
   },
   "r2g": {
     "test": "echo 'no-op'"
