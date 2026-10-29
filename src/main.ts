@@ -135,8 +135,8 @@ export class HavenHandler<T extends IHavenHandler> implements IHavenHandler {
     }
 
     if (v.onPinnedUncaughtException) {
-      if (typeof v.onUnpinnedUncaughtException !== 'function') {
-        throw new Error('the "onUnpinnedUncaughtException" is not a function.');
+      if (typeof v.onPinnedUncaughtException !== 'function') {
+        throw new Error('the "onPinnedUncaughtException" is not a function.');
       }
       this.onPinnedUncaughtException = v.onPinnedUncaughtException
     }
@@ -221,7 +221,9 @@ const getParsedObject = (e: any, depth: number): any => {
 type Falsy = null | undefined | false | 0 | '';
 type Truthy<T> = T extends Falsy ? never : T;
 
-const getErrorTrace = function (e: any, opts: HavenOptions & Truthy<any>): InspectedError {
+const getErrorTrace = function (e: any, opts: HavenOptions = {}): InspectedError {
+
+  opts = opts || {};
 
   if (!modVars.overrideProd && !opts.overrideProd) {
 
@@ -255,26 +257,14 @@ const getErrorTrace = function (e: any, opts: HavenOptions & Truthy<any>): Inspe
 
 const sendResponse = (res: Response, type: HavenErrorType, errorTrace: InspectedError) => {
 
-  if (res.headersSent) {
-    log.warning('Warning: headers already sent for response. Error:', errorTrace);
+  // A partially committed or disconnected HTTP response must never be rewritten.
+  if (res.headersSent || (res as any).writableEnded || (res as any).destroyed) {
+    return;
   }
-
-  debugger;
 
   try {
     res.status(500);
-  } catch (err) {
-    log.error(err);
-  }
-
-  try {
     res.setHeader('Content-Type', 'application/json');
-    res.setHeader('content-type', 'application/json'); // just b/c these computers iz gyyyy
-  } catch (err) {
-    log.error(err);
-  }
-
-  try {
     res.send(
       // safe stringify can handle circular refs, and other issues that JSON.stringify cannot
       safe.stringify({
@@ -290,7 +280,8 @@ const sendResponse = (res: Response, type: HavenErrorType, errorTrace: Inspected
     );
 
   } catch (err) {
-    log.error(err);
+    // Do not log the raw error/trace or attempt to send a second response.
+    log.warning('Failed to write the domain error response.');
   }
 
 };
@@ -408,12 +399,12 @@ const runOnce = () => {
     if (!(z && req && res && opts)) {
       log.error('domain-haven sees an unhandledRejection, but cannot act:', e);
 
-      if (z && typeof z.onUnpinnedUncaughtException === 'function') {
-        z.onUnpinnedUncaughtException({
+      if (z && typeof z.onUnpinnedUnhandledRejection === 'function') {
+        z.onUnpinnedUnhandledRejection({
           message: 'Unhandled rejection could NOT be pinned to a request/response.',
           error: getErrorTrace(e, opts),
           pinned: false,
-          havenType: 'uncaughtException',
+          havenType: 'unhandledRejection',
           promise: <any>p || null,
           domain: d || null
         });
@@ -531,9 +522,9 @@ export const haven = <T extends HavenHandler<T>>(x?: T): RequestHandler => {
       }
     };
 
-    res.once('finish', () => {
-      cleanUpOnce();
-    });
+    res.once('finish', cleanUpOnce);
+    res.once('close', cleanUpOnce);
+    req.once('aborted', cleanUpOnce);
 
     d.once('error', e => {
 
