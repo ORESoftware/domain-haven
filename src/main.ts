@@ -218,9 +218,6 @@ const getParsedObject = (e: any, depth: number): any => {
 
 };
 
-type Falsy = null | undefined | false | 0 | '';
-type Truthy<T> = T extends Falsy ? never : T;
-
 const getErrorTrace = function (e: any, opts: HavenOptions = {}): InspectedError {
 
   opts = opts || {};
