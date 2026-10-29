@@ -24,6 +24,11 @@ permissions:
 
 jobs:
   lifecycle:
+    name: Node.js ${{ matrix.node }}
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['22', '24', '26']
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -37,10 +42,10 @@ jobs:
         env:
           EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
-      - name: Use Node.js 22
+      - name: Use tested Node.js version
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
-          node-version: '22'
+          node-version: ${{ matrix.node }}
           package-manager-cache: false
       - name: Install locked application dependencies without lifecycle scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
