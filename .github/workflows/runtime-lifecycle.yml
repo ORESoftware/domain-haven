@@ -35,10 +35,13 @@ jobs:
           package-manager-cache: false
       - name: Install locked application dependencies without lifecycle scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Install a fixed test-only TypeScript compiler without updating lockfile
-        run: npm install --no-save --package-lock=false --ignore-scripts --no-audit --no-fund typescript@5.8.3
-      - name: Typecheck and compile actual runtime source
-        run: ./node_modules/.bin/tsc --project tsconfig.json
+      - name: Install fixed test-only TypeScript in isolated runner temp prefix
+        shell: bash
+        run: |
+          npm install --prefix "$RUNNER_TEMP/domain-haven-tsc" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund typescript@5.8.3
+      - name: Typecheck and compile actual runtime source against locked application dependencies
+        shell: bash
+        run: '"$RUNNER_TEMP/domain-haven-tsc/node_modules/.bin/tsc" --project tsconfig.json'
       - name: Run executable domain lifecycle regression suite
         run: node --test test/runtime-lifecycle.test.js
       - name: Preserve committed manifest and lockfile
