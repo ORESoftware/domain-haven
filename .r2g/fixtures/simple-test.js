@@ -1,7 +1,7 @@
 "use strict";
 exports.__esModule = true;
 var async = require("async");
-var request = require("request");
+var request = require("../../test/request-client");
 var assert = require("assert");
 var util = require("util");
 var tasks = Array.apply(null, Array(19000)).map(function (n, x) {
